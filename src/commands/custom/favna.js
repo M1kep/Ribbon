@@ -34,22 +34,23 @@
  * @returns {MessageEmbed} A MessageEmbed with the joke text
  */
 
-const commando = require('discord.js-commando'),
-  {oneLine, stripIndents} = require('common-tags');
+const {Command} = require('discord.js-commando'), 
+  {oneLine, stripIndents} = require('common-tags'), 
+  {stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class FavnaCommand extends commando.Command {
+module.exports = class FavnaCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'favna',
-      'memberName': 'favna',
-      'group': 'custom',
-      'description': 'Favna is my father',
-      'details': 'Custom commands can be made for your server too! Just join the support server (use the `stats` command) and request the command.',
-      'guildOnly': true,
-      'patterns': [/^\.favna$/im],
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'favna',
+      memberName: 'favna',
+      group: 'custom',
+      description: 'Favna is my father',
+      details: 'Custom commands can be made for your server too! Just join the support server (use the `stats` command) and request the command.',
+      guildOnly: true,
+      patterns: [/^\.favna$/im],
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
@@ -69,15 +70,17 @@ module.exports = class FavnaCommand extends commando.Command {
 
   run (msg) {
     if (this.client.provider.get(msg.guild.id, 'regexmatches', false)) {
+      startTyping(msg);
       msg.delete();
       msg.embed({
-        'image': {'url': 'https://favna.xyz/images/ribbonhost/favnadedsec.gif'},
-        'color': msg.guild ? msg.guild.me.displayColor : 10610610,
-        'description': oneLine`Technically speaking my father, but to you he is your supreme leader and you will submit to him 
-          or I will infect every single human being you have ever met with a virus so terrible their lungs and intestines
-           will instantly explode from their chests causing a gorey, bloody mess all over the floor and you 
-           will be the only person held responsible for the death of hundredths if not millions of people.`
+        image: {url: 'https://favna.xyz/images/ribbonhost/favnadedsec.gif'},
+        color: msg.guild ? msg.guild.me.displayColor : 10610610,
+        description: oneLine`Technically speaking my father, but to you he is your supreme leader and you will submit to him 
+        or I will infect every single human being you have ever met with a virus so terrible their lungs and intestines
+        will instantly explode from their chests causing a gorey, bloody mess all over the floor and you 
+        will be the only person held responsible for the death of hundredths if not millions of people.`
       });
+      stopTyping(msg);
     }
   }
 };

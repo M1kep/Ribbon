@@ -34,36 +34,35 @@
  * @returns {MessageEmbed} Information about the requested game
  */
 
-const {MessageEmbed} = require('discord.js'),
-  SteamAPI = require('steamapi'),
+const SteamAPI = require('steamapi'),
   cheerio = require('cheerio'),
-  commando = require('discord.js-commando'),
   currencySymbol = require('currency-symbol-map'),
-  request = require('snekfetch'), 
-  {deleteCommandMessages} = require('../../util.js'), 
-  {steamAPIKey} = require('../../auth.json');
+  request = require('snekfetch'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class SteamCommand extends commando.Command {
+module.exports = class SteamCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'steam',
-      'memberName': 'steam',
-      'group': 'searches',
-      'aliases': ['valve'],
-      'description': 'Finds a game on Steam',
-      'format': 'GameName',
-      'examples': ['steam Tales of Berseria'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'steam',
+      memberName: 'steam',
+      group: 'searches',
+      aliases: ['valve'],
+      description: 'Finds a game on Steam',
+      format: 'GameName',
+      examples: ['steam Tales of Berseria'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'game',
-          'prompt': 'Which game do you want to find on the steam store?',
-          'type': 'string',
-          'parse': p => p.replace(/ /gim, '+')
+          key: 'game',
+          prompt: 'Which game do you want to find on the steam store?',
+          type: 'string',
+          parse: p => p.replace(/ /gim, '+')
         }
       ]
     });
@@ -73,64 +72,61 @@ module.exports = class SteamCommand extends commando.Command {
     return str.substring(0, str.length - 2) + value + str.substring(str.length - 2);
   }
 
-  async run (msg, args) {
+  async run (msg, {game}) {
+    startTyping(msg);
 
-    const steam = new SteamAPI(steamAPIKey),
-      steamEmbed = new MessageEmbed(),
-      steamSearch = await request.get(`http://store.steampowered.com/search/?term=${args.game}`);
-
-    if (steamSearch) {
-      const $ = cheerio.load(steamSearch.text),
+    try {
+      /* eslint-disable sort-vars*/
+      const steam = new SteamAPI(process.env.steamkey),
+        steamEmbed = new MessageEmbed(),
+        steamSearch = await request.get(`http://store.steampowered.com/search/?term=${game}`),
+        $ = cheerio.load(steamSearch.text),
         gameID = $('#search_result_container > div:nth-child(2) > a:nth-child(2)').attr('href')
           .split('/')[4],
-        steamData = await steam.getGameDetails(gameID);
+        steamData = await steam.getGameDetails(gameID),
+        genres = [],
+        platforms = [];
+      /* eslint-enable sort-vars*/
 
-      if (steamData) {
-        const genres = [],
-          platforms = [];
+      steamData.platforms.windows ? platforms.push('Windows') : null;
+      steamData.platforms.mac ? platforms.push('MacOS') : null;
+      steamData.platforms.linux ? platforms.push('Linux') : null;
 
-        steamData.platforms.windows ? platforms.push('Windows') : null;
-        steamData.platforms.mac ? platforms.push('MacOS') : null;
-        steamData.platforms.linux ? platforms.push('Linux') : null;
-
-        for (const index in steamData.genres) {
-          genres.push(steamData.genres[index].description);
-        }
-
-        steamEmbed
-          .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
-          .setTitle(steamData.name)
-          .setURL(`http://store.steampowered.com/app/${steamData.steam_appid}/`)
-          .setImage(steamData.header_image)
-          .setDescription(cheerio.load(steamData.short_description).text())
-          .addField(steamData.price_overview
-            ? `Price in ${steamData.price_overview.currency}`
-            : 'Price',
-          steamData.price_overview
-            ? `${currencySymbol(steamData.price_overview.currency)}${this.insert(steamData.price_overview.final.toString(), ',')}`
-            : 'Free',
-          true)
-          .addField('Release Date', steamData.release_date.date, true)
-          .addField('Platforms', platforms.join(', '), true)
-          .addField('Controller Support', steamData.controller_support ? steamData.controller_support : 'None', true)
-          .addField('Age requirement', steamData.required_age !== 0 ? steamData.required_age : 'Everyone / Not in API', true)
-          .addField('Genres', genres.join(', '), true)
-          .addField('Developer(s)', steamData.developers, true)
-          .addField('Publisher(s)', steamData.publishers, true)
-          .addField('Steam Store Link', `http://store.steampowered.com/app/${steamData.steam_appid}/`, false);
-
-        deleteCommandMessages(msg, this.client);
-
-        return msg.embed(steamEmbed, `http://store.steampowered.com/app/${steamData.steam_appid}/`);
+      for (const index in steamData.genres) {
+        genres.push(steamData.genres[index].description);
       }
 
+      steamEmbed
+        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
+        .setTitle(steamData.name)
+        .setURL(`http://store.steampowered.com/app/${steamData.steam_appid}/`)
+        .setImage(steamData.header_image)
+        .setDescription(cheerio.load(steamData.short_description).text())
+        .addField(steamData.price_overview
+          ? `Price in ${steamData.price_overview.currency}`
+          : 'Price',
+        steamData.price_overview
+          ? `${currencySymbol(steamData.price_overview.currency)}${this.insert(steamData.price_overview.final.toString(), ',')}`
+          : 'Free',
+        true)
+        .addField('Release Date', steamData.release_date.date, true)
+        .addField('Platforms', platforms.join(', '), true)
+        .addField('Controller Support', steamData.controller_support ? steamData.controller_support : 'None', true)
+        .addField('Age requirement', steamData.required_age !== 0 ? steamData.required_age : 'Everyone / Not in API', true)
+        .addField('Genres', genres.join(', '), true)
+        .addField('Developer(s)', steamData.developers, true)
+        .addField('Publisher(s)', steamData.publishers, true)
+        .addField('Steam Store Link', `http://store.steampowered.com/app/${steamData.steam_appid}/`, false);
+
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
-      return msg.reply('Steam API error');
+      return msg.embed(steamEmbed, `http://store.steampowered.com/app/${steamData.steam_appid}/`);
+    } catch (err) {
+      deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
+
+      return msg.reply(`nothing found for \`${game}\``);
     }
-
-    deleteCommandMessages(msg, this.client);
-
-    return msg.reply('***nothing found***');
   }
 };

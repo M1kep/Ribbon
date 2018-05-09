@@ -44,33 +44,32 @@
  * @returns {MessageEmbed} Log of the nicknaming
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'), 
-  {oneLine, stripIndents} = require('common-tags'), 
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {oneLine, stripIndents} = require('common-tags'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class NickallCommand extends commando.Command {
+module.exports = class NickallCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'nickall',
-      'memberName': 'nickall',
-      'aliases': ['na', 'massnick', 'nickmass', 'allnick'],
-      'group': 'moderation',
-      'description': 'Modify the nickname for all members of the guild',
-      'details': stripIndents`${oneLine`Assign, remove, prefix/append with a nickname to all members. 
+      name: 'nickall',
+      memberName: 'nickall',
+      aliases: ['na', 'massnick', 'nickmass', 'allnick'],
+      group: 'moderation',
+      description: 'Modify the nickname for all members of the guild',
+      details: stripIndents`${oneLine`Assign, remove, prefix/append with a nickname to all members. 
                                 Use \`clear\` as argument to remove the nickname, 
                                 \`prefix\` to add a prefix to every member (takes their current nickname if they have one or their username if they do not), 
 								\`append\` to do the same but append it instead of prefix`}
 						**Please note that on larger servers this command can take a very long time to actually nickname all the members because Discord only allows a couple of actions per minute.**`,
-      'format': '[prefix|append] NewNickname|clear',
-      'examples': ['nickall AverageJoe', 'nickall prefix ༼ つ ◕_◕ ༽つ'],
-      'guildOnly': true,
-      'args': [
+      format: '[prefix|append] NewNickname|clear',
+      examples: ['nickall AverageJoe', 'nickall prefix ༼ つ ◕_◕ ༽つ'],
+      guildOnly: true,
+      args: [
         {
-          'key': 'data',
-          'prompt': 'What nickname to assign? Check the details through the `help nickall` command to see all options',
-          'type': 'string'
+          key: 'data',
+          prompt: 'What nickname to assign? Check the details through the `help nickall` command to see all options',
+          type: 'string'
         }
       ]
     });
@@ -81,18 +80,19 @@ module.exports = class NickallCommand extends commando.Command {
   }
 
   run (msg, args) {
+    startTyping(msg);
     const allMembers = msg.guild.members.values(),
       argData = args.data.split(' '),
-      embed = new MessageEmbed(),
       modLogs = this.client.provider.get(msg.guild, 'modlogchannel',
         msg.guild.channels.exists('name', 'mod-logs')
           ? msg.guild.channels.find('name', 'mod-logs').id
-          : null);
+          : null),
+      nickallLogembed = new MessageEmbed();
 
-    embed
+    nickallLogembed
       .setColor('#355698')
       .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-      .setFooter(moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z'));
+      .setTimestamp();
 
     if (argData[0] === 'clear') {
       for (const member of allMembers) {
@@ -100,28 +100,28 @@ module.exports = class NickallCommand extends commando.Command {
           member.setNickname('');
         }
       }
-      embed.setDescription('**Action:** Removed the nicknames from all members');
+      nickallLogembed.setDescription('**Action:** Removed the nicknames from all members');
     } else if (argData[0] === 'prefix') {
       for (const member of allMembers) {
         if (member.manageable) {
           member.setNickname(`${argData.slice(1).join(' ')} ${member.displayName}`);
         }
       }
-      embed.setDescription(`**Action:** Prefix the name of every member with ${argData.slice(1).join(' ')}`);
+      nickallLogembed.setDescription(`**Action:** Prefix the name of every member with ${argData.slice(1).join(' ')}`);
     } else if (argData[0] === 'append') {
       for (const member of allMembers) {
         if (member.manageable) {
           member.setNickname(`${member.displayName} ${argData.slice(1).join(' ')}`);
         }
       }
-      embed.setDescription(`**Action:** Appended the name of every member with ${argData.slice(1).join(' ')}`);
+      nickallLogembed.setDescription(`**Action:** Appended the name of every member with ${argData.slice(1).join(' ')}`);
     } else {
       for (const member of allMembers) {
         if (member.manageable) {
           member.setNickname(args.data);
         }
       }
-      embed.setDescription(`**Action:** Assigned the nickname ${args.data} to all members`);
+      nickallLogembed.setDescription(`**Action:** Assigned the nickname ${args.data} to all members`);
     }
 
     if (this.client.provider.get(msg.guild, 'modlogs', true)) {
@@ -132,13 +132,12 @@ module.exports = class NickallCommand extends commando.Command {
         this.client.provider.set(msg.guild, 'hasSentModLogMessage', true);
       }
 
-      deleteCommandMessages(msg, this.client);
-
-      return modLogs ? msg.guild.channels.get(modLogs).send({embed}) : msg.say(embed);
+      modLogs ? msg.guild.channels.get(modLogs).send('', {embed: nickallLogembed}) : null;
     }
 
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.embed(embed);
+    return msg.embed(nickallLogembed);
   }
 };

@@ -34,35 +34,34 @@
  * @returns {MessageEmbed} Activity from that member
  */
 
-const {MessageEmbed} = require('discord.js'),
-  Spotify = require('spotify-web-api-node'),
-  commando = require('discord.js-commando'),
+const Spotify = require('spotify-web-api-node'),
   duration = require('moment-duration-format'), // eslint-disable-line no-unused-vars
   moment = require('moment'),
-  request = require('snekfetch'), 
-  {deleteCommandMessages} = require('../../util.js'), 
-  {spotifyID, spotifySecret} = require('../../auth.json');
+  request = require('snekfetch'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class ActivityCommand extends commando.Command {
+module.exports = class ActivityCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'activity',
-      'memberName': 'activity',
-      'group': 'info',
-      'aliases': ['act', 'presence', 'richpresence'],
-      'description': 'Gets the activity (presence) data from a member',
-      'format': 'MemberID|MemberName(partial or full)',
-      'examples': ['activity Favna'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'activity',
+      memberName: 'activity',
+      group: 'info',
+      aliases: ['act', 'presence', 'richpresence'],
+      description: 'Gets the activity (presence) data from a member',
+      format: 'MemberID|MemberName(partial or full)',
+      examples: ['activity Favna'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'member',
-          'prompt': 'What user would you like to get the activity from?',
-          'type': 'member'
+          key: 'member',
+          prompt: 'What user would you like to get the activity from?',
+          type: 'member'
         }
       ]
     });
@@ -79,19 +78,19 @@ module.exports = class ActivityCommand extends commando.Command {
   /* eslint complexity: ["error", 45], max-statements: ["error", 35]*/
   /* eslint-disable no-nested-ternary*/
   async run (msg, args) {
-
-    const activity = args.member.presence.activity,
+    startTyping(msg);
+    const {activity} = args.member.presence,
       ava = args.member.user.displayAvatarURL(),
       embed = new MessageEmbed(),
       ext = this.fetchExt(ava),
       gameList = await request.get('https://canary.discordapp.com/api/v6/games'),
       spotifyApi = new Spotify({
-        'clientId': spotifyID,
-        'clientSecret': spotifySecret
+        clientId: process.env.spotifyid,
+        clientSecret: process.env.spotifysecret
       });
 
     embed
-      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
       .setAuthor(args.member.user.tag, ava, `${ava}?size2048`)
       .setThumbnail(ext.includes('gif') ? `${ava}&f=.gif` : ava);
 
@@ -112,7 +111,7 @@ module.exports = class ActivityCommand extends commando.Command {
           if (spotifyData) {
             spotify = spotifyData.body.tracks.items[0];
             activity.state = typeof activity.state === 'object' ? activity.state : activity.state.split(';');
-            for (const i in spotify.artists.length) { // eslint-disable-line max-depth
+            for (const i in spotify.artists.length) {
               activity.state[i] = `[${activity.state[i]}](${spotify.artists[i].external_urls.spotify})`;
             }
           }
@@ -170,11 +169,13 @@ module.exports = class ActivityCommand extends commando.Command {
       activity.appID ? embed.addField('Application ID', activity.appID, true) : null;
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.embed(embed);
     }
     embed.addField('Activity', 'Nothing', true);
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.embed(embed);
   }

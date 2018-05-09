@@ -24,56 +24,219 @@
  */
 
 /* eslint-disable sort-vars */
-const Commando = require('discord.js-commando'),
-  {MessageEmbed} = require('discord.js'),
+const Database = require('better-sqlite3'),
+  Jimp = require('jimp'),
+  imgur = require('imgur'),
   moment = require('moment'),
   path = require('path'),
   request = require('snekfetch'),
-  sqlite = require('sqlite'),
-  {twitchclientid} = require(`${__dirname}/auth.json`),
-  {oneLine, stripIndents} = require('common-tags');
+  {Client, FriendlyError, SyncSQLiteProvider} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {promisify} = require('util'),
+  {oneLine, stripIndents} = require('common-tags'),
+  {ordinal} = require(path.join(__dirname, 'util.js'));
 /* eslint-enable sort-vars */
 
 class Ribbon {
   constructor (token) {
     this.token = token;
-    this.client = new Commando.Client({
-      'commandPrefix': '!',
-      'owner': '112001393140723712',
-      'selfbot': false,
-      'unknownCommandResponse': false,
-      'presence': {
-        'status': 'online',
-        'activity': {
-          'application': '376520643862331396',
-          'name': '@Ribbon help',
-          'type': 'WATCHING',
-          'details': 'Made by Favna',
-          'state': 'https://favna.xyz/ribbon',
-          'assets': {
-            'largeImage': '385133227997921280',
-            'smallImage': '385133144245927946',
-            'largeText': 'Invite me to your server!',
-            'smallText': 'Look at the website!'
+    this.client = new Client({
+      commandPrefix: '!',
+      owner: '112001393140723712',
+      selfbot: false,
+      unknownCommandResponse: false,
+      presence: {
+        status: 'online',
+        activity: {
+          application: '376520643862331396',
+          name: '@Ribbon help',
+          type: 'WATCHING',
+          details: 'Made by Favna',
+          state: 'https://favna.xyz/ribbon',
+          assets: {
+            largeImage: '385133227997921280',
+            smallImage: '385133144245927946',
+            largeText: 'Invite me to your server!',
+            smallText: 'Look at the website!'
           }
         }
       }
     });
-    this.isReady = false;
+  }
+
+  checkReminders () {
+    const conn = new Database(path.join(__dirname, 'data/databases/reminders.sqlite3'));
+
+    try {
+      const query = conn.prepare('SELECT * FROM "reminders"').all();
+
+      for (const row in query) {
+        const remindTime = moment(query[row].remindTime),
+          dura = moment.duration(remindTime.diff()); // eslint-disable-line sort-vars
+
+        if (dura.asMinutes() <= 0) {
+          this.client.users.resolve(query[row].userID).send({
+            embed: {
+              color: 10610610,
+              description: query[row].remindText,
+              author: {
+                name: 'Ribbon Reminders',
+                iconURL: this.client.user.displayAvatarURL({format: 'png'})
+              },
+              thumbnail: {url: 'https://favna.xyz/images/ribbonhost/reminders.png'}
+            }
+          });
+          conn.prepare('DELETE FROM "reminders" WHERE userID = $userid AND remindTime = $remindTime').run({
+            userid: query[row].userID,
+            remindTime: query[row].remindTime
+          });
+        }
+      }
+    } catch (err) {
+      this.client.channels.resolve(process.env.ribbonlogchannel).send(stripIndents`
+      <@${this.client.owners[0].id}> Error occurred sending someone their reminder!
+      **Time:** ${moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
+      **Error Message:** ${err}
+      `);
+    }
+  }
+
+  lotto () {
+    const conn = new Database(path.join(__dirname, 'data/databases/casino.sqlite3'));
+
+    try {
+      const tables = conn.prepare('SELECT name FROM sqlite_master WHERE type=\'table\'').all();
+
+      for (const row in tables) {
+        const guildData = conn.prepare(`SELECT * FROM "${tables[row].name}"`).all(),
+          winner = Math.floor(Math.random() * guildData.length),
+          prevBal = guildData[winner].balance; // eslint-disable-line sort-vars
+
+        guildData[winner].balance += 2000;
+
+        conn.prepare(`UPDATE "${tables[row].name}" SET balance=$balance WHERE userID="${guildData[winner].userID}"`).run({balance: guildData[winner].balance});
+
+        // eslint-disable-next-line one-var
+        const defaultChannel = this.client.guilds.resolve(tables[row].name).systemChannel,
+          winnerEmbed = new MessageEmbed(),
+          winnerLastMessage = this.client.guilds.resolve(tables[row].name).members.get('112001393140723712').lastMessageChannelID,
+          winnerLastMessageChannel = winnerLastMessage ? this.client.guilds.resolve(tables[row].name).channels.get(winnerLastMessage) : null,
+          winnerLastMessageChannelPermitted = winnerLastMessageChannel ? winnerLastMessageChannel.permissionsFor(this.client.user).has('SEND_MESSAGES') : false;
+
+        winnerEmbed
+          .setColor('#7CFC00')
+          .setDescription(`Congratulations <@${guildData[winner].userID}>! You won today's random lotto and were granted 2000 chips 🎉!`)
+          .setAuthor(this.client.guilds.resolve(tables[row].name).members.get(guildData[winner].userID).displayName,
+            this.client.guilds.resolve(tables[row].name).members.get(guildData[winner].userID).user.displayAvatarURL({format: 'png'}))
+          .setThumbnail('https://favna.xyz/images/ribbonhost/casinologo.png')
+          .addField('Balance', `${prevBal} ➡ ${guildData[winner].balance}`);
+
+        if (winnerLastMessageChannelPermitted) {
+          winnerLastMessageChannel.send(`<@${guildData[winner].userID}>`, {embed: winnerEmbed});
+        } else if (defaultChannel) {
+          defaultChannel.send(`<@${guildData[winner].userID}>`, {embed: winnerEmbed});
+        }
+      }
+    } catch (err) {
+      this.client.channels.resolve(process.env.ribbonlogchannel).send(stripIndents`
+      <@${this.client.owners[0].id}> Error occurred giving someone their lotto payout!
+      **Time:** ${moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
+      **Error Message:** ${err}
+      `);
+    }
+  }
+
+  forceStopTyping () {
+    const allChannels = this.client.channels;
+
+    for (const channel of allChannels.values()) {
+      if (channel.type === 'text' || channel.type === 'dm' || channel.type === 'group') {
+        if (this.client.user.typingDurationIn(channel) > 10000) {
+          channel.stopTyping(true);
+        }
+      }
+    }
+  }
+
+  async joinmessage (member) {
+    Jimp.prototype.getBase64Async = promisify(Jimp.prototype.getBase64);
+    /* eslint-disable sort-vars*/
+    const avatar = await Jimp.read(member.user.displayAvatarURL({format: 'png'})),
+      border = await Jimp.read('https://www.favna.xyz/images/ribbonhost/jimp/border.png'),
+      canvas = await Jimp.read('https://www.favna.xyz/images/ribbonhost/jimp/canvas.png'),
+      newMemberEmbed = new MessageEmbed(),
+      fontLarge = await Jimp.loadFont(path.join(__dirname, 'data/fonts/roboto-large.fnt')),
+      fontMedium = await Jimp.loadFont(path.join(__dirname, 'data/fonts/roboto-medium.fnt')),
+      mask = await Jimp.read('https://www.favna.xyz/images/ribbonhost/jimp/mask.png');
+    /* eslint-enable sort-vars*/
+
+    avatar.resize(136, Jimp.AUTO);
+    mask.resize(136, Jimp.AUTO);
+    border.resize(136, Jimp.AUTO);
+    avatar.mask(mask, 0, 0);
+    avatar.composite(border, 0, 0);
+    canvas.blit(avatar, 5, 5);
+    canvas.print(fontLarge, 155, 10, 'welcome'.toUpperCase());
+    canvas.print(fontMedium, 160, 60, `you are the ${ordinal(member.guild.memberCount)} member`.toUpperCase());
+    canvas.print(fontMedium, 160, 80, `of ${member.guild.name}`.toUpperCase());
+
+    const base64 = await canvas.getBase64Async(Jimp.MIME_PNG), // eslint-disable-line one-var
+      upload = await imgur.uploadBase64(base64.slice(base64.indexOf(',') + 1));
+
+    newMemberEmbed
+      .setColor('#80F31F')
+      .setTitle('NEW MEMBER!')
+      .setDescription(`Please give a warm welcome to <@${member.id}>`)
+      .setImage(upload.data.link);
+
+    member.guild.channels.get(member.guild.settings.get('joinmsgchannel')).send('', {embed: newMemberEmbed});
+  }
+
+  async leavemessages (member) {
+    Jimp.prototype.getBase64Async = promisify(Jimp.prototype.getBase64);
+    /* eslint-disable sort-vars*/
+    const avatar = await Jimp.read(member.user.displayAvatarURL({format: 'png'})),
+      border = await Jimp.read('https://www.favna.xyz/images/ribbonhost/jimp/border.png'),
+      canvas = await Jimp.read('https://www.favna.xyz/images/ribbonhost/jimp/canvas.png'),
+      leaveMemberEmbed = new MessageEmbed(),
+      fontLarge = await Jimp.loadFont(path.join(__dirname, 'data/fonts/roboto-large.fnt')),
+      fontMedium = await Jimp.loadFont(path.join(__dirname, 'data/fonts/roboto-medium.fnt')),
+      mask = await Jimp.read('https://www.favna.xyz/images/ribbonhost/jimp/mask.png');
+      /* eslint-enable sort-vars*/
+
+    avatar.resize(136, Jimp.AUTO);
+    mask.resize(136, Jimp.AUTO);
+    border.resize(136, Jimp.AUTO);
+    avatar.mask(mask, 0, 0);
+    avatar.composite(border, 0, 0);
+    canvas.blit(avatar, 5, 5);
+    canvas.print(fontLarge, 155, 10, 'goodbye'.toUpperCase());
+    canvas.print(fontMedium, 160, 60, `there are now ${member.guild.memberCount} members`.toUpperCase());
+    canvas.print(fontMedium, 160, 80, `on ${member.guild.name}`.toUpperCase());
+
+    const base64 = await canvas.getBase64Async(Jimp.MIME_PNG), // eslint-disable-line one-var
+      upload = await imgur.uploadBase64(base64.slice(base64.indexOf(',') + 1));
+
+    leaveMemberEmbed
+      .setColor('#F4BF42')
+      .setTitle('Member Left 😢')
+      .setDescription(`You will be missed <@${member.id}>`)
+      .setImage(upload.data.link);
+
+    member.guild.channels.get(member.guild.settings.get('leavemsgchannel')).send('', {embed: leaveMemberEmbed});
   }
 
   onCmdBlock () {
     return (msg, reason) => {
       console.log(oneLine`
 		Command ${msg.command ? `${msg.command.groupID}:${msg.command.memberName}` : ''}
-		blocked; ${reason}
-	`);
+		blocked; ${reason}`);
     };
   }
 
   onCmdErr () {
     return (cmd, err) => {
-      if (err instanceof Commando.FriendlyError) {
+      if (err instanceof FriendlyError) {
         return;
       }
       console.error(`Error in command ${cmd.groupID}:${cmd.memberName}`, err);
@@ -108,9 +271,6 @@ class Ribbon {
   onError () {
     return (e) => {
       console.error(e);
-      console.error(`${stripIndents`A websocket error occurred!
-      Time: ${moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
-      Error Message:`} ${e}`);
     };
   }
 
@@ -127,25 +287,30 @@ class Ribbon {
   onGuildMemberAdd () {
     return (member) => {
       if (this.client.provider.get(member.guild, 'memberlogs', true)) {
-        const embed = new MessageEmbed(),
+        const memberJoinLogEmbed = new MessageEmbed(),
           memberLogs = this.client.provider.get(member.guild, 'memberlogchannel',
             member.guild.channels.exists('name', 'member-logs')
               ? member.guild.channels.find('name', 'member-logs').id
               : null);
 
-        embed.setAuthor(`${member.user.tag} (${member.id})`, member.user.displayAvatarURL({'format': 'png'}))
-          .setFooter(`User joined | ${moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}`)
+        memberJoinLogEmbed.setAuthor(`${member.user.tag} (${member.id})`, member.user.displayAvatarURL({format: 'png'}))
+          .setFooter('User joined')
+          .setTimestamp()
           .setColor('#80F31F');
 
         if (this.client.provider.get(member.guild.id, 'defaultRole')) {
           member.roles.add(this.client.provider.get(member.guild.id, 'defaultRole'));
-          embed.setDescription(`Automatically assigned the role ${member.guild.roles.get(this.client.provider.get(member.guild.id, 'defaultRole')).name} to this member`);
+          memberJoinLogEmbed.setDescription(`Automatically assigned the role ${member.guild.roles.get(this.client.provider.get(member.guild.id, 'defaultRole')).name} to this member`);
         }
 
-        if (memberLogs !== null && member.guild.channels.get(memberLogs).permissionsFor(this.client.user)
+        if (memberLogs && member.guild.channels.get(memberLogs).permissionsFor(this.client.user)
           .has('SEND_MESSAGES')) {
-          member.guild.channels.get(memberLogs).send({embed});
+          member.guild.channels.get(memberLogs).send('', {embed: memberJoinLogEmbed});
         }
+      }
+
+      if (member.guild.settings.get('joinmsgs', false) && member.guild.settings.get('joinmsgchannel', null)) {
+        this.joinmessage(member);
       }
     };
   }
@@ -153,20 +318,36 @@ class Ribbon {
   onGuildMemberRemove () {
     return (member) => {
       if (this.client.provider.get(member.guild, 'memberlogs', true)) {
-        const embed = new MessageEmbed(),
+        const memberLeaveLogEmbed = new MessageEmbed(),
           memberLogs = this.client.provider.get(member.guild, 'memberlogchannel',
             member.guild.channels.exists('name', 'member-logs')
               ? member.guild.channels.find('name', 'member-logs').id
               : null);
 
-        embed.setAuthor(`${member.user.tag} (${member.id})`, member.user.displayAvatarURL({'format': 'png'}))
-          .setFooter(`User left | ${moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}`)
+        memberLeaveLogEmbed.setAuthor(`${member.user.tag} (${member.id})`, member.user.displayAvatarURL({format: 'png'}))
+          .setFooter('User left')
+          .setTimestamp()
           .setColor('#F4BF42');
 
         if (memberLogs !== null && member.guild.channels.get(memberLogs).permissionsFor(this.client.user)
           .has('SEND_MESSAGES')) {
-          member.guild.channels.get(memberLogs).send({embed});
+          member.guild.channels.get(memberLogs).send('', {embed: memberLeaveLogEmbed});
         }
+      }
+
+      try {
+        const conn = new Database(path.join(__dirname, 'data/databases/casino.sqlite3')),
+          query = conn.prepare(`SELECT * FROM "${member.guild.id}" WHERE userID = ?`).get(member.id);
+
+        if (query) {
+          conn.prepare(`DELETE FROM "${member.guild.id}" WHERE userID = ?`).run(member.id);
+        }
+      } catch (err) {
+        null;
+      }
+
+      if (member.guild.settings.get('leavemsgs', false) && member.guild.settings.get('leavemsgchannel', null)) {
+        this.leavemessages(member);
       }
     };
   }
@@ -183,21 +364,21 @@ class Ribbon {
             oldActivity = oldMember.presence.activity;
 
           if (!oldActivity) {
-            oldActivity = {'url': 'placeholder'};
+            oldActivity = {url: 'placeholder'};
           }
           if (!newActivity) {
-            newActivity = {'url': 'placeholder'};
+            newActivity = {url: 'placeholder'};
           }
           if (!(/(twitch)/i).test(oldActivity.url) && (/(twitch)/i).test(newActivity.url)) {
 
             /* eslint-disable sort-vars*/
             const userData = await request.get('https://api.twitch.tv/kraken/users')
                 .set('Accept', 'application/vnd.twitchtv.v5+json')
-                .set('Client-ID', twitchclientid)
+                .set('Client-ID', process.env.twitchclientid)
                 .query('login', newActivity.url.split('/')[3]),
               streamData = await request.get('https://api.twitch.tv/kraken/streams')
                 .set('Accept', 'application/vnd.twitchtv.v5+json')
-                .set('Client-ID', twitchclientid)
+                .set('Client-ID', process.env.twitchclientid)
                 .query('channel', userData.body.users[0]._id),
               twitchChannel = this.client.provider.get(curGuild, 'twitchchannel', null),
               twitchEmbed = new MessageEmbed();
@@ -223,7 +404,7 @@ class Ribbon {
                 .setImage(streamData.body.streams[0].preview.large);
             }
             if (twitchChannel) {
-              curGuild.channels.get(twitchChannel).send({'embed': twitchEmbed});
+              curGuild.channels.get(twitchChannel).send({embed: twitchEmbed});
             }
           }
         }
@@ -234,18 +415,19 @@ class Ribbon {
   onReady () {
     return () => {
       console.log(`Client ready; logged in as ${this.client.user.username}#${this.client.user.discriminator} (${this.client.user.id})`);
-      this.isReady = true;
+      const bot = this;
 
-      /**
-       * @todo Periodic Casino Lottery
-       * @body Every 24 hours check which guilds are in Casino database then which members are in those guild. Pick a random one to give free 1000 chips
-       */
+      setInterval(() => {
+        bot.forceStopTyping();
+      }, 180000);
 
-      /**
-       * @todo RemindMe system
-       * @body let people store reminders on the bot. Store in SQL Database `reminders.sqlite`.  
-       * First onReady store the timestamps in object then on interval check the object of timestamps and if any has passed remind that person with their text
-       */
+      setInterval(() => {
+        bot.checkReminders();
+      }, 300000);
+
+      setInterval(() => {
+        bot.lotto();
+      }, 86400000);
     };
   }
 
@@ -287,9 +469,11 @@ class Ribbon {
       .on('unknownCommand', this.onUnknownCommand())
       .on('warn', console.warn);
 
+    const db = new Database(path.join(__dirname, 'data/databases/settings.sqlite3'));
+
     this.client.setProvider(
-      sqlite.open(path.join(__dirname, 'data/databases/settings.sqlite3')).then(db => new Commando.SQLiteProvider(db))
-    ).catch(console.error);
+      new SyncSQLiteProvider(db)
+    );
 
     this.client.registry
       .registerGroups([
@@ -310,21 +494,15 @@ class Ribbon {
       .registerDefaultGroups()
       .registerDefaultTypes()
       .registerDefaultCommands({
-        'help': true,
-        'prefix': true,
-        'ping': true,
-        'eval_': true,
-        'commandState': true
+        help: true,
+        prefix: true,
+        ping: true,
+        eval_: true,
+        commandState: true
       })
       .registerCommandsIn(path.join(__dirname, 'commands'));
 
     return this.client.login(this.token);
-  }
-
-  deinit () {
-    this.isReady = false;
-
-    return this.client.destroy();
   }
 }
 

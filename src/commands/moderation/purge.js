@@ -34,26 +34,27 @@
  * @returns {Message} Confirmation of the amount of messages deleted - will self delete after 1 second.
  */
 
-const commando = require('discord.js-commando');
+const {Command} = require('discord.js-commando'), 
+  {stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class PurgeCommand extends commando.Command {
+module.exports = class PurgeCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'purge',
-      'memberName': 'purge',
-      'group': 'moderation',
-      'aliases': ['prune', 'delete'],
-      'description': 'Purge a certain amount of messages',
-      'format': 'AmountOfMessages',
-      'examples': ['purge 5'],
-      'guildOnly': true,
-      'args': [
+      name: 'purge',
+      memberName: 'purge',
+      group: 'moderation',
+      aliases: ['prune', 'delete'],
+      description: 'Purge a certain amount of messages',
+      format: 'AmountOfMessages',
+      examples: ['purge 5'],
+      guildOnly: true,
+      args: [
         {
-          'key': 'amount',
-          'prompt': 'How many messages should I purge?',
-          'min': 1,
-          'max': 99,
-          'type': 'integer'
+          key: 'amount',
+          prompt: 'How many messages should I purge?',
+          min: 1,
+          max: 99,
+          type: 'integer'
         }
       ]
     });
@@ -64,17 +65,22 @@ module.exports = class PurgeCommand extends commando.Command {
   }
 
   async run (msg, args) {
+    startTyping(msg);
     if (!msg.channel.permissionsFor(msg.guild.me).has('MANAGE_MESSAGES')) {
+      stopTyping(msg);
+
       return msg.reply('I do not have permission to delete messages from this channel. Better go and fix that!');
     }
-    
+
     msg.channel.bulkDelete(args.amount + 1, true);
 
     const reply = await msg.say(`\`Deleted ${args.amount} messages\``);
 
+    stopTyping(msg);
+
     return reply.delete({
-      'timeout': 1000,
-      'reason': 'Deleting own return message after purge'
+      timeout: 1000,
+      reason: 'Deleting own return message after purge'
     });
   }
 };

@@ -32,30 +32,30 @@
  * @returns {MessageEmbed} Info on who used the "say" command last
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'), 
-  {oneLine} = require('common-tags'), 
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {oneLine} = require('common-tags'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class SayWutCommand extends commando.Command {
+module.exports = class SayWutCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'saywut',
-      'memberName': 'saywut',
-      'group': 'extra',
-      'aliases': ['saywat', 'saywot'],
-      'description': 'Bust the last "say" user',
-      'examples': ['saywut'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'saywut',
+      memberName: 'saywut',
+      group: 'extra',
+      aliases: ['saywat', 'saywot'],
+      description: 'Bust the last "say" user',
+      examples: ['saywut'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
 
   run (msg) {
+    startTyping(msg);
     const saydata = this.client.provider.get(msg.guild.id, 'saydata', null),
       wutEmbed = new MessageEmbed();
 
@@ -64,15 +64,16 @@ module.exports = class SayWutCommand extends commando.Command {
         .setColor(saydata.memberHexColor)
         .setTitle(`Last ${saydata.commandPrefix}say message author`)
         .setAuthor(oneLine`${saydata.authorTag} (${saydata.authorID})`, saydata.avatarURL)
-        .setFooter(oneLine`${moment(saydata.messageDate).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}`, 'https://favna.xyz/images/ribbonhost/ribbonicon.png')
-        .setDescription(saydata.argString);
+        .setDescription(saydata.argString)
+        .setTimestamp();
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.embed(wutEmbed);
     }
-
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(`couldn't fetch message for your server. Has anyone used the ${msg.guild.commandPrefix}say command before?`);
   }

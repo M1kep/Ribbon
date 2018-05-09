@@ -9,8 +9,6 @@ Build-In HelpCommand - Displays a list of available commands, or detailed inform
 
 **Returns**: <code>[MessageEmbed]</code> - Multiple MessageEmbeds showing all commands  
 **Category**: Build-In  
-**Author**: Jeroen Claassens (favna) <sharkie.jeroen@gmail.com>  
-**License**: GPL-3.0-or-later  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -33,8 +31,6 @@ Omitting the parameter will simply print your current one.
 
 **Returns**: <code>Message</code> - Message with the current or new prefix  
 **Category**: Build-In  
-**Author**: Jeroen Claassens (favna) <sharkie.jeroen@gmail.com>  
-**License**: GPL-3.0-or-later  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -56,8 +52,6 @@ Build-In PingCommand - Checks the bot's ping to the Discord server
 
 **Returns**: <code>Message</code> - Reply message with the bot's ping  
 **Category**: Build-In  
-**Author**: Jeroen Claassens (favna) <sharkie.jeroen@gmail.com>  
-**License**: GPL-3.0-or-later  
 
 ## Modules
 
@@ -92,6 +86,10 @@ Build-In PingCommand - Checks the bot's ping to the Discord server
 <dt><a href="#module_kai">kai</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Custom KaiCommand - Custom Command exclusive to ChaosGamez server<br>A joke command to spite Kai<br>Server admins can disable this command entirely by using the <code>rmt off</code> command<br><strong>Aliases</strong>: <code>.kai</code></p>
 </dd>
+<dt><a href="#module_biscuit">biscuit</a> ⇒ <code>MessageEmbed</code></dt>
+<dd><p>Custom CookieCommand - Steal someone&#39;s 🍪 gnanahahahaha
+<strong>Aliases</strong>: <code>.biscuit</code>, <code>biscuit</code></p>
+</dd>
 <dt><a href="#module_copypasta">copypasta</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Extra CopyPastaCommand - Gets one of the server&#39;s stored copypastas<br>Note: It is possible to get copypastas with more than 2000 characters. Ask me to add it through my server!<br><strong>Aliases</strong>: <code>cp</code>, <code>pasta</code></p>
 </dd>
@@ -102,7 +100,7 @@ Build-In PingCommand - Checks the bot's ping to the Discord server
 <dd><p>Extra CopyPastaListCommand - Gets all copypastas available to the server<br><strong>Aliases</strong>: <code>cplist</code>, <code>copylist</code>, <code>pastalist</code></p>
 </dd>
 <dt><a href="#module_math">math</a> ⇒ <code>MessageEmbed</code></dt>
-<dd><p>Extra MathCommand - Take the effort out of calculations and let the bot do it for you<br><strong>Aliases</strong>: <code>calc</code></p>
+<dd><p>Extra MathCommand - Take the effort out of calculations and let the bot do it for you<br><strong>Aliases</strong>: <code>maths</code>, <code>calc</code></p>
 </dd>
 <dt><a href="#module_oxr">oxr</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Extra MoneyCommand - Convert one currency to another<br>Note: bitcoin is BTC, Ethereum is ETH, Litecoin is LTC<br>For a full list of supported currencies see <a href="https://docs.openexchangerates.org/docs/supported-currencies">this url</a><br><strong>Aliases</strong>: <code>money</code>, <code>rate</code>, <code>convert</code></p>
@@ -112,6 +110,9 @@ Build-In PingCommand - Checks the bot's ping to the Discord server
 </dd>
 <dt><a href="#module_randomcol">randomcol</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Extra RandomCol - Generates a random color<br>Providing a color hex will display that color, providing none will generate a random one<br><strong>Aliases</strong>: <code>randhex</code>, <code>rhex</code>, <code>randomcolor</code>, <code>randcol</code>, <code>randomhex</code></p>
+</dd>
+<dt><a href="#module_remind">remind</a> ⇒ <code>Message</code></dt>
+<dd><p>Extra RemindCommand - Set a reminder and the bot will remind you<br>Works by reminding you after a given amount of minutes, hours or days in the format of <code>5m</code>, <code>2h</code> or <code>1d</code><br><strong>Aliases</strong>: <code>remindme</code>, <code>reminder</code></p>
 </dd>
 <dt><a href="#module_say">say</a> ⇒ <code>Message</code></dt>
 <dd><p>Extra Say - Repeats a message and deletes your message<br><strong>Aliases</strong>: <code>sayd</code>, <code>repeat</code></p>
@@ -125,6 +126,9 @@ Build-In PingCommand - Checks the bot's ping to the Discord server
 <dt><a href="#module_weather">weather</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Extra Weather - Get the current weather forecast in any city<br>Potentially you&#39;ll have to specify city if the city is in multiple countries, i.e. <code>weather amsterdam</code> will not be the same as <code>weather amsterdam missouri</code><br><strong>Aliases</strong>: <code>temp</code>, <code>forecast</code>, <code>fc</code>, <code>wth</code></p>
 </dd>
+<dt><a href="#module_xkcd">xkcd</a> ⇒ <code>MessageEmbed</code></dt>
+<dd><p>Extra xkcdCommand - Gets a random image from xkcd<br><strong>Aliases</strong>: <code>devjoke</code>, <code>comicjoke</code></p>
+</dd>
 <dt><a href="#module_zalgo">zalgo</a> ⇒ <code>Message</code></dt>
 <dd><p>Extra Zalgo - Create zalgo-fied text from your input<br>First banishes any existing zalgo to ensure proper result<br><strong>Aliases</strong>: <code>trash</code></p>
 </dd>
@@ -135,7 +139,7 @@ Build-In PingCommand - Checks the bot's ping to the Discord server
 <dd><p>Games DiceCommand - Rolls some dice with some sides. Great for the DnD players!<br><strong>Aliases</strong>: <code>xdicey</code>, <code>roll</code>, <code>dicey</code>, <code>die</code></p>
 </dd>
 <dt><a href="#module_dndc">dndc</a> ⇒ <code>MessageEmbed</code></dt>
-<dd><p>Games DndCCommand - Flips a coin<br><strong>Aliases</strong>: <code>coinflip</code>, <code>dndc</code></p>
+<dd><p>Games DndCCommand - Flips a coin<br><strong>Aliases</strong>: <code>coinflip</code>, <code>dndc</code>, <code>dcoin</code></p>
 </dd>
 <dt><a href="#module_fight">fight</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Games FightCommand - Pit two things against each other in a fight to the death. Winner is determined with random.org randomization.<br><strong>Aliases</strong>: <code>combat</code></p>
@@ -148,6 +152,9 @@ Build-In PingCommand - Checks the bot's ping to the Discord server
 </dd>
 <dt><a href="#module_rps">rps</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Games RockPaperScissorCommand - Play Rock Paper Scissors against random.org randomization<br><strong>Aliases</strong>: rockpaperscissors</p>
+</dd>
+<dt><a href="#module_ship">ship</a> ⇒ <code>MessageEmbed</code></dt>
+<dd><p>Games ShipCommand - Ship 2 members<br>Leaving 1 or both parameters out will have the bot pick 1 or 2 random members<br><strong>Aliases</strong>: <code>love</code>, <code>marry</code>, <code>engage</code></p>
 </dd>
 <dt><a href="#module_slap">slap</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Games SlapCommand - Slap a dumb person💢!<br><strong>Aliases</strong>: <code>bakaslap</code></p>
@@ -186,7 +193,7 @@ Build-In PingCommand - Checks the bot's ping to the Discord server
 <dd><p>Leaderboards OverwatchCommand - Shows Player Stats for a given BattleNet BattleTag<br><strong>Aliases</strong>: <code>owstats</code></p>
 </dd>
 <dt><a href="#module_rocketleague">rocketleague</a> ⇒ <code>MessageEmbed</code></dt>
-<dd><p>Leaderboards RocketLeagueCommand - Shows Player Stats / Leaderboard from Rocket League<br><strong>Aliases</strong>: <code>rlstats</code>, <code>rocketstats</code></p>
+<dd><p>Leaderboards RocketLeagueCommand - Shows Rocket League Leaderboard<br><strong>Aliases</strong>: <code>rlstats</code>, <code>rocketstats</code></p>
 </dd>
 <dt><a href="#module_showdown">showdown</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Leaderboards ShowdownCommand - Show the top ranking players in your tier of choice<br><strong>Aliases</strong>: <code>showdownlb</code>, <code>pokelb</code></p>
@@ -209,8 +216,16 @@ Build-In PingCommand - Checks the bot's ping to the Discord server
 <dt><a href="#module_delrole">delrole</a></dt>
 <dd><p>Moderation DeleteRoleCommand - Delete the role of a member<br><strong>Aliases</strong>: <code>deleterole</code>, `d</p>
 </dd>
+<dt><a href="#module_joinmessages">joinmessages</a> ⇒ <code>MessageEmbed</code></dt>
+<dd><p>Moderation JoinMessagesCommand - Toggle whether Ribbon should send special greeting messages when members join
+<strong>Aliases</strong>: <code>jmt</code>, <code>joinmessagestoggle</code></p>
+</dd>
 <dt><a href="#module_kick">kick</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Moderation KickCommand - Kicks a somewhat bad member<br><strong>Aliases</strong>: <code>k</code></p>
+</dd>
+<dt><a href="#module_leavemessages">leavemessages</a> ⇒ <code>MessageEmbed</code></dt>
+<dd><p>Moderation LeaveMessagesCommand - Toggle whether Ribbon should send special leave messages when members leave
+<strong>Aliases</strong>: <code>lmt</code>, <code>leavemessagestoggle</code></p>
 </dd>
 <dt><a href="#module_listwarn">listwarn</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Moderation ListWarnCommand - Show the amount of warning points a member has<br><strong>Aliases</strong>: <code>reqwarn</code>, <code>lw</code>, <code>rw</code></p>
@@ -235,7 +250,7 @@ This may also mean that the bot won&#39;t have access if it doesn&#39;t have adm
 <dd><p>Moderation PurgeCommand - Quickly delete a certain amount of messages<br><strong>Aliases</strong>: <code>prune</code>, <code>delete</code></p>
 </dd>
 <dt><a href="#module_regexmatchtoggle">regexmatchtoggle</a> ⇒ <code>Message</code></dt>
-<dd><p>Moderation RegexMatchToggleCommand - Toggle Toggle commands matching on regex for this server<br><strong>Aliases</strong>: <code>rmt</code>, <code>regexmatch</code></p>
+<dd><p>Moderation RegexMatchToggleCommand - Toggle commands matching on regex for this server<br><strong>Aliases</strong>: <code>rmt</code>, <code>regexmatch</code></p>
 </dd>
 <dt><a href="#module_setmemberlogs">setmemberlogs</a> ⇒ <code>Message</code></dt>
 <dd><p>Moderation SetMemberlogsCommand - Sets the channel used for member logs<br><strong>Aliases</strong>: <code>setmember</code></p>
@@ -278,8 +293,7 @@ There are 3 ways to queue songs  </p>
 </ol>
 </dd>
 <dt><a href="#module_queue">queue</a> ⇒ <code>MessageEmbed</code></dt>
-<dd><p>Music ViewQueueCommand - Shows the current queue of songs<br>Songs are paginated in sets of 5<br><strong>Aliases</strong>: <code>songs</code>, <code>song-list</code>, <code>list</code>, <code>listqueue</code>
-<strong>Aliases</strong>: <code>bal</code>, <code>cash</code>, <code>balance</code></p>
+<dd><p>Music ViewQueueCommand - Shows the current queue of songs<br>Songs are paginated in sets of 5<br><strong>Aliases</strong>: <code>songs</code>, <code>song-list</code>, <code>list</code>, <code>listqueue</code></p>
 </dd>
 <dt><a href="#module_resume">resume</a> ⇒ <code>Message</code></dt>
 <dd><p>Music ResumeSongCommand - Resumes the song after pausing it<br>You need to be in a voice channel before you can use this command<br><strong>Aliases</strong>: <code>go</code>, <code>continue</code>, <code>ale</code>, <code>loss</code>, <code>res</code></p>
@@ -288,14 +302,17 @@ There are 3 ways to queue songs  </p>
 <dd><p>Music SaveQueueCommand - DMs the 10 upcoming songs from the queue to the user
 <strong>Aliases</strong>: <code>save-songs</code>, <code>save-song-list</code>, <code>ss</code>, <code>savequeue</code></p>
 </dd>
+<dt><a href="#module_queue">queue</a> ⇒ <code>MessageEmbed</code></dt>
+<dd><p>Music ShuffleCommand - Shuffles the current queue<br>Shuffles using a <a href="https://en.wikipedia.org/wiki/Fisher–Yates_shuffle#The_modern_algorithm">modern version of the Fisher-Yates shuffle algorithm</a><br><strong>Aliases</strong>: <code>remix</code>, <code>mixtape</code></p>
+</dd>
 <dt><a href="#module_skip">skip</a> ⇒ <code>Message</code></dt>
-<dd><p>Music SkipSongCommand - Skips the currently playing song and jumps to the next in queue or stops if it is the last song of the queue<br>A vote to skip is started if there are 4 or more people in the voice channel with <code>(amount of members) / 3</code> as required amount of votes (bot doesn&#39;t count as a member)<br>Staff that can delete messages can force the skip by using <code>skip force</code><br>You need to be in a voice channel before you can use this command</p>
+<dd><p>Music SkipSongCommand - Skips the currently playing song and jumps to the next in queue or stops if it is the last song of the queue<br>A vote to skip is started if there are 4 or more people in the voice channel with <code>(amount of members) / 3</code> as required amount of votes (bot doesn&#39;t count as a member)<br>Staff that can delete messages can force the skip by using <code>skip force</code><br>You need to be in a voice channel before you can use this command<br><strong>Aliases</strong>: <code>next</code></p>
 </dd>
 <dt><a href="#module_status">status</a> ⇒ <code>MessageEmbed</code></dt>
 <dd><p>Music MusicStatusCommand - Gets status about the currently playing song<br><strong>Aliases</strong>: <code>song</code>, <code>playing</code>, <code>current-song</code>, <code>now-playing</code></p>
 </dd>
 <dt><a href="#module_stop">stop</a> ⇒ <code>Message</code></dt>
-<dd><p>Music StopMusicCommand - Stops the current queue. Bot will automatically leave the channel after this command<br><strong>Aliases</strong>: <code>kill</code>, <code>stfu</code>, <code>quit</code>, <code>leave</code>, <code>disconnect</code></p>
+<dd><p>Music StopMusicCommand - Stops the current queue. Bot will automatically leave the channel after this command<br>A vote to skip is started if there are 4 or more people in the voice channel with <code>(amount of members) / 3</code> as required amount of votes (bot doesn&#39;t count as a member)<br>Staff that can delete messages can force the skip by using <code>skip force</code><br>You need to be in a voice channel before you can use this command<br><strong>Aliases</strong>: <code>kill</code>, <code>stfu</code>, <code>quit</code>, <code>leave</code>, <code>disconnect</code></p>
 </dd>
 <dt><a href="#module_volume">volume</a> ⇒ <code>Message</code></dt>
 <dd><p>Music ChangeVolumeCommand - Changes the volume of the currently playing song<br>If you do not  give any parameter the bot will show the current volume<br>You need to be in a voice channel before you can use this command<br><strong>Aliases</strong>: <code>set-volume</code>, <code>set-vol</code>, <code>vol</code></p>
@@ -544,6 +561,14 @@ Server admins can disable this command entirely by using the `rmt off` command
 
 **Returns**: <code>MessageEmbed</code> - A MessageEmbed with a spiteful image and a mention to kai. Also deletes the other kai spites 🤔  
 **Category**: custom  
+<a name="module_biscuit"></a>
+
+## biscuit ⇒ <code>MessageEmbed</code>
+Custom CookieCommand - Steal someone's 🍪 gnanahahahaha
+**Aliases**: `.biscuit`, `biscuit`
+
+**Returns**: <code>MessageEmbed</code> - A MessageEmbed with a cookie gif  
+**Category**: custom  
 <a name="module_copypasta"></a>
 
 ## copypasta ⇒ <code>MessageEmbed</code>
@@ -592,7 +617,7 @@ Extra CopyPastaListCommand - Gets all copypastas available to the server
 
 ## math ⇒ <code>MessageEmbed</code>
 Extra MathCommand - Take the effort out of calculations and let the bot do it for you  
-**Aliases**: `calc`
+**Aliases**: `maths`, `calc`
 
 **Returns**: <code>MessageEmbed</code> - Your equation and its answer  
 **Category**: extra  
@@ -665,6 +690,25 @@ randomcol #990000
 -OR-  
 randomcol 36B56e
 ```
+<a name="module_remind"></a>
+
+## remind ⇒ <code>Message</code>
+Extra RemindCommand - Set a reminder and the bot will remind you  
+Works by reminding you after a given amount of minutes, hours or days in the format of `5m`, `2h` or `1d`  
+**Aliases**: `remindme`, `reminder`
+
+**Returns**: <code>Message</code> - Confirmation the reminder was stored  
+**Category**: extra  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| Time | <code>string</code> | Amount of time you want to be reminded in |
+| Reminder | <code>string</code> | Thing you want the bot to remind you of |
+
+**Example**  
+```js
+remind 1h To continue developing Ribbon
+```
 <a name="module_say"></a>
 
 ## say ⇒ <code>Message</code>
@@ -726,6 +770,14 @@ Potentially you'll have to specify city if the city is in multiple countries, i.
 ```js
 weather Amsterdam
 ```
+<a name="module_xkcd"></a>
+
+## xkcd ⇒ <code>MessageEmbed</code>
+Extra xkcdCommand - Gets a random image from xkcd  
+**Aliases**: `devjoke`, `comicjoke`
+
+**Returns**: <code>MessageEmbed</code> - Embedded image and info about it  
+**Category**: extra  
 <a name="module_zalgo"></a>
 
 ## zalgo ⇒ <code>Message</code>
@@ -783,7 +835,7 @@ dice 5 6
 
 ## dndc ⇒ <code>MessageEmbed</code>
 Games DndCCommand - Flips a coin  
-**Aliases**: `coinflip`, `dndc`
+**Aliases**: `coinflip`, `dndc`, `dcoin`
 
 **Returns**: <code>MessageEmbed</code> - Side the coin landed on  
 **Category**: games  
@@ -854,6 +906,25 @@ Games RockPaperScissorCommand - Play Rock Paper Scissors against random.org rand
 **Example**  
 ```js
 rps Rock
+```
+<a name="module_ship"></a>
+
+## ship ⇒ <code>MessageEmbed</code>
+Games ShipCommand - Ship 2 members  
+Leaving 1 or both parameters out will have the bot pick 1 or 2 random members  
+**Aliases**: `love`, `marry`, `engage`
+
+**Returns**: <code>MessageEmbed</code> - Name of the ship  
+**Category**: games  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| [ShipMemberOne] | <code>string</code> | The first member to ship |
+| [ShipMemberTwo] | <code>string</code> | The second member to ship |
+
+**Example**  
+```js
+ship Biscuit Rei
 ```
 <a name="module_slap"></a>
 
@@ -1023,24 +1094,19 @@ Leaderboards OverwatchCommand - Shows Player Stats for a given BattleNet BattleT
 
 **Example**  
 ```js
-overwatch cat#11481
+overwatch Camoflouge#1267
 ```
 <a name="module_rocketleague"></a>
 
 ## rocketleague ⇒ <code>MessageEmbed</code>
-Leaderboards RocketLeagueCommand - Shows Player Stats / Leaderboard from Rocket League    
+Leaderboards RocketLeagueCommand - Shows Rocket League Leaderboard      
 **Aliases**: `rlstats`, `rocketstats`
 
-**Returns**: <code>MessageEmbed</code> - T.B.D. - Will be added later  
+**Returns**: <code>MessageEmbed</code> - Top 10 ranking players by their amount of wins  
 **Category**: leaderboards  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| T.B.D. | <code>string</code> | Will be added later |
-
 **Example**  
 ```js
-T.B.D
+rocketleague
 ```
 <a name="module_showdown"></a>
 
@@ -1163,6 +1229,23 @@ Moderation DeleteRoleCommand - Delete the role of a member
 ```js
 delrole Favna Member
 ```
+<a name="module_joinmessages"></a>
+
+## joinmessages ⇒ <code>MessageEmbed</code>
+Moderation JoinMessagesCommand - Toggle whether Ribbon should send special greeting messages when members join
+**Aliases**: `jmt`, `joinmessagestoggle`
+
+**Returns**: <code>MessageEmbed</code> - Confirmation the setting was stored  
+**Category**: moderation  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| Option | <code>boolean</code> | True or False |
+
+**Example**  
+```js
+joinmessages enable
+```
 <a name="module_kick"></a>
 
 ## kick ⇒ <code>MessageEmbed</code>
@@ -1180,6 +1263,23 @@ Moderation KickCommand - Kicks a somewhat bad member
 **Example**  
 ```js
 kick ThunderKai
+```
+<a name="module_leavemessages"></a>
+
+## leavemessages ⇒ <code>MessageEmbed</code>
+Moderation LeaveMessagesCommand - Toggle whether Ribbon should send special leave messages when members leave
+**Aliases**: `lmt`, `leavemessagestoggle`
+
+**Returns**: <code>MessageEmbed</code> - Confirmation the setting was stored  
+**Category**: moderation  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| Option | <code>boolean</code> | True or False |
+
+**Example**  
+```js
+leavemessages enable
 ```
 <a name="module_listwarn"></a>
 
@@ -1307,7 +1407,7 @@ purge 10
 <a name="module_regexmatchtoggle"></a>
 
 ## regexmatchtoggle ⇒ <code>Message</code>
-Moderation RegexMatchToggleCommand - Toggle Toggle commands matching on regex for this server  
+Moderation RegexMatchToggleCommand - Toggle commands matching on regex for this server  
 **Aliases**: `rmt`, `regexmatch`
 
 **Returns**: <code>Message</code> - Confirmation the setting was stored  
@@ -1419,7 +1519,7 @@ Please note that the bot will not auto ban when the member has a certain amount 
 
 **Example**  
 ```js
-warn Biscuit
+warn Biscuit 5 Not giving everyone cookies
 ```
 <a name="module_defaultvolume"></a>
 
@@ -1514,7 +1614,6 @@ play
 Music ViewQueueCommand - Shows the current queue of songs  
 Songs are paginated in sets of 5  
 **Aliases**: `songs`, `song-list`, `list`, `listqueue`
-**Aliases**: `bal`, `cash`, `balance`
 
 **Returns**: <code>MessageEmbed</code> - List of queued songs with their duration and total duration of the queue  
 **Category**: music  
@@ -1544,13 +1643,27 @@ Music SaveQueueCommand - DMs the 10 upcoming songs from the queue to the user
 
 **Returns**: <code>MessageEmbed</code> - Titles, durations and total queue duration sent in a DM  
 **Category**: music  
+<a name="module_queue"></a>
+
+## queue ⇒ <code>MessageEmbed</code>
+Music ShuffleCommand - Shuffles the current queue  
+Shuffles using a [modern version of the Fisher-Yates shuffle algorithm](https://en.wikipedia.org/wiki/Fisher–Yates_shuffle#The_modern_algorithm)  
+**Aliases**: `remix`, `mixtape`
+
+**Returns**: <code>MessageEmbed</code> - The new queue order (limited to the first 10 entries)  
+**Category**: music  
+**Example**  
+```js
+queue 2
+```
 <a name="module_skip"></a>
 
 ## skip ⇒ <code>Message</code>
 Music SkipSongCommand - Skips the currently playing song and jumps to the next in queue or stops if it is the last song of the queue  
 A vote to skip is started if there are 4 or more people in the voice channel with `(amount of members) / 3` as required amount of votes (bot doesn't count as a member)  
 Staff that can delete messages can force the skip by using `skip force`  
-You need to be in a voice channel before you can use this command
+You need to be in a voice channel before you can use this command  
+**Aliases**: `next`
 
 **Returns**: <code>Message</code> - Confirmation the song was skipped  
 **Category**: music  
@@ -1577,6 +1690,9 @@ Music MusicStatusCommand - Gets status about the currently playing song
 
 ## stop ⇒ <code>Message</code>
 Music StopMusicCommand - Stops the current queue. Bot will automatically leave the channel after this command  
+A vote to skip is started if there are 4 or more people in the voice channel with `(amount of members) / 3` as required amount of votes (bot doesn't count as a member)  
+Staff that can delete messages can force the skip by using `skip force`  
+You need to be in a voice channel before you can use this command  
 **Aliases**: `kill`, `stfu`, `quit`, `leave`, `disconnect`
 
 **Returns**: <code>Message</code> - Sad face about stopping the music  
@@ -2193,8 +2309,6 @@ Command-Management GroupsCommand - Shows all command groups
 
 **Returns**: <code>Message</code> - Reply message list of groups  
 **Category**: Command-Management  
-**Author**: Jeroen Claassens (favna) <sharkie.jeroen@gmail.com>  
-**License**: GPL-3.0-or-later  
 
 <a name="module_enable"></a>
 
@@ -2204,8 +2318,6 @@ Command-Management EnableCommand - Enables a command or command group
 
 **Returns**: <code>Message</code>
 **Category**: Command-Management  
-**Author**: Jeroen Claassens (favna) <sharkie.jeroen@gmail.com>  
-**License**: GPL-3.0-or-later  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -2224,8 +2336,6 @@ Command-Management DisableCommand - Disables a command or command group
 
 **Returns**: <code>Message</code>
 **Category**: Command-Management  
-**Author**: Jeroen Claassens (favna) <sharkie.jeroen@gmail.com>  
-**License**: GPL-3.0-or-later  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -2244,8 +2354,6 @@ Command-Management ReloadCommand - Reloads a command or command group
 
 **Returns**: <code>Message</code>
 **Category**: Command-Management  
-**Author**: Jeroen Claassens (favna) <sharkie.jeroen@gmail.com>  
-**License**: GPL-3.0-or-later  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -2264,8 +2372,6 @@ Command-Management LoadCommand - Loads a new command
 
 **Returns**: <code>Message</code>
 **Category**: Command-Management  
-**Author**: Jeroen Claassens (favna) <sharkie.jeroen@gmail.com>  
-**License**: GPL-3.0-or-later  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -2284,8 +2390,6 @@ Command-Management UnloadCommand - Unloads a command
 
 **Returns**: <code>Message</code>
 **Category**: Command-Management  
-**Author**: Jeroen Claassens (favna) <sharkie.jeroen@gmail.com>  
-**License**: GPL-3.0-or-later  
 
 | Param | Type | Description |
 | --- | --- | --- |

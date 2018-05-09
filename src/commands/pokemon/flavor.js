@@ -38,43 +38,40 @@
  */
 
 /* eslint-disable max-statements */
-const Matcher = require('did-you-mean'),
-  commando = require('discord.js-commando'),
+const Fuse = require('fuse.js'),
   dexEntries = require('../../data/dex/flavorText.json'),
   path = require('path'),
-  underscore = require('underscore'),
   zalgo = require('to-zalgo'),
+  {Command} = require('discord.js-commando'),
   {MessageEmbed} = require('discord.js'),
   {PokeAliases} = require(path.join(__dirname, '../../data/dex/aliases')),
   {BattlePokedex} = require(path.join(__dirname, '../../data/dex/pokedex')),
-  {capitalizeFirstLetter, deleteCommandMessages} = require('../../util.js');
+  {capitalizeFirstLetter, deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class FlavorCommand extends commando.Command {
+module.exports = class FlavorCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'flavor',
-      'memberName': 'flavor',
-      'group': 'pokemon',
-      'aliases': ['flavors', 'dexentries', 'dextext', 'dextex'],
-      'description': 'Get all the available dex entries for a Pokémon',
-      'format': 'PokemonName',
-      'examples': ['flavor Dragonite'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'flavor',
+      memberName: 'flavor',
+      group: 'pokemon',
+      aliases: ['flavors', 'dexentries', 'dextext', 'dextex'],
+      description: 'Get all the available dex entries for a Pokémon',
+      format: 'PokemonName',
+      examples: ['flavor Dragonite'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'pokemon',
-          'prompt': 'Get info from which Pokémon?',
-          'type': 'string',
-          'parse': p => p.toLowerCase()
+          key: 'pokemon',
+          prompt: 'Get info from which Pokémon?',
+          type: 'string',
+          parse: p => p.toLowerCase()
         }
       ]
     });
-
-    this.match = [];
   }
 
   fetchColor (col) {
@@ -104,60 +101,68 @@ module.exports = class FlavorCommand extends commando.Command {
     }
   }
 
-  /* eslint-disable complexity*/
-  run (msg, args) {
-    const dataEmbed = new MessageEmbed(),
+  /* eslint-disable complexity, no-param-reassign*/
+  run (msg, {pokemon, shines}) {
+    startTyping(msg);
+    if (/(?:--shiny)/i.test(pokemon)) {
+      pokemon = (pokemon.substring(0, pokemon.indexOf('--shiny')) + pokemon.substring(pokemon.indexOf('--shiny') + '--shiny'.length)).replace(/ /g, '');
+      shines = true;
+    }
+    if (pokemon.split(' ')[0] === 'mega') {
+      pokemon = `${pokemon.substring(pokemon.split(' ')[0].length + 1)}mega`;
+    }
+
+    /* eslint-disable sort-vars */
+    const aliasoptions = {
+        shouldSort: true,
+        threshold: 0.2,
+        location: 0,
+        distance: 100,
+        maxPatternLength: 32,
+        minMatchCharLength: 1,
+        keys: ['alias']
+      },
+      pokeoptions = {
+        shouldSort: true,
+        threshold: 0.3,
+        location: 0,
+        distance: 100,
+        maxPatternLength: 32,
+        minMatchCharLength: 1,
+        keys: ['num', 'species']
+      },
+      aliasFuse = new Fuse(PokeAliases, aliasoptions),
+      pokeFuse = new Fuse(BattlePokedex, pokeoptions),
+      firstSearch = pokeFuse.search(pokemon),
+      aliasSearch = !firstSearch.length ? aliasFuse.search(pokemon) : null,
+      pokeSearch = !firstSearch.length && aliasSearch.length ? pokeFuse.search(aliasSearch[0].name) : firstSearch,
+      dataEmbed = new MessageEmbed(),
       pokedexEntries = [];
+    /* eslint-enable sort-vars */
 
-    let pokeEntry = {},
-      totalEntriesLength = 0;
+    let totalEntriesLength = 0;
 
-    if (/(?:--shiny)/i.test(args.pokemon)) {
-      args.pokemon = (args.pokemon.substring(0, args.pokemon.indexOf('--shiny')) + args.pokemon.substring(args.pokemon.indexOf('--shiny') + '--shiny'.length)).replace(/ /g, '');
-      args.shines = true;
-    }
-
-    if (PokeAliases[args.pokemon]) {
-      args.pokemon = PokeAliases[args.pokemon];
-      this.match = new Matcher(Object.keys(PokeAliases));
-    } else {
-      this.match = new Matcher(Object.keys(BattlePokedex).join(' '));
-    }
-
-    if (args.pokemon.split(' ')[0] === 'mega') {
-      args.pokemon = `${args.pokemon.substring(args.pokemon.split(' ')[0].length + 1)}mega`;
-    }
-
-    pokeEntry = BattlePokedex[args.pokemon];
-
-    for (const pokemon in BattlePokedex) {
-      if (BattlePokedex[pokemon].num === parseInt(args.pokemon, 10) || BattlePokedex[pokemon].species.toLowerCase() === args.pokemon.toLowerCase()) {
-        pokeEntry = BattlePokedex[pokemon];
-        break;
-      }
-    }
-
-    if (!underscore.isEmpty(pokeEntry)) {
-      if (pokeEntry.forme) {
-        for (let i = 0; i < dexEntries[`${pokeEntry.num}${pokeEntry.forme.toLowerCase()}`].length; i += 1) {
+    if (pokeSearch.length) {
+      if (pokeSearch[0].forme) {
+        for (let i = 0; i < dexEntries[`${pokeSearch[0].num}${pokeSearch[0].forme.toLowerCase()}`].length; i += 1) {
           pokedexEntries.push({
-            'game': dexEntries[`${pokeEntry.num}${pokeEntry.forme.toLowerCase()}`][i].version_id,
-            'text': dexEntries[`${pokeEntry.num}${pokeEntry.forme.toLowerCase()}`][i].flavor_text
+            game: dexEntries[`${pokeSearch[0].num}${pokeSearch[0].forme.toLowerCase()}`][i].version_id,
+            text: dexEntries[`${pokeSearch[0].num}${pokeSearch[0].forme.toLowerCase()}`][i].flavor_text
           });
         }
       } else {
-        for (let i = 0; i < dexEntries[pokeEntry.num].length; i += 1) {
+        for (let i = 0; i < dexEntries[pokeSearch[0].num].length; i += 1) {
           pokedexEntries.push({
-            'game': dexEntries[pokeEntry.num][i].version_id,
-            'text': dexEntries[pokeEntry.num][i].flavor_text
+            game: dexEntries[pokeSearch[0].num][i].version_id,
+            text: dexEntries[pokeSearch[0].num][i].flavor_text
           });
         }
       }
 
       if (!pokedexEntries) {
         pokedexEntries.push({
-          'game': 'N.A.',
-          'text': '*PokéDex data not found for this Pokémon*'
+          game: 'N.A.',
+          text: '*PokéDex data not found for this Pokémon*'
         });
       }
       let i = pokedexEntries.length - 1;
@@ -173,29 +178,29 @@ module.exports = class FlavorCommand extends commando.Command {
         i -= 1;
       } while (i !== -1);
 
-      if (pokeEntry.num < 0) {
-        pokeEntry.sprite = 'https://favna.xyz/images/ribbonhost/pokesprites/unknown.png';
-      } else if (args.shines) {
-        pokeEntry.sprite = `https://favna.xyz/images/ribbonhost/pokesprites/shiny/${pokeEntry.species.replace(' ', '_').toLowerCase()}.png`;
+      if (pokeSearch[0].num < 0) {
+        pokeSearch[0].sprite = 'https://favna.xyz/images/ribbonhost/pokesprites/unknown.png';
+      } else if (shines) {
+        pokeSearch[0].sprite = `https://favna.xyz/images/ribbonhost/pokesprites/shiny/${pokeSearch[0].species.replace(' ', '_').toLowerCase()}.png`;
       } else {
-        pokeEntry.sprite = `https://favna.xyz/images/ribbonhost/pokesprites/regular/${pokeEntry.species.replace(' ', '_').toLowerCase()}.png`;
+        pokeSearch[0].sprite = `https://favna.xyz/images/ribbonhost/pokesprites/regular/${pokeSearch[0].species.replace(' ', '_').toLowerCase()}.png`;
       }
 
       dataEmbed
-        .setColor(this.fetchColor(pokeEntry.color))
-        .setAuthor(`#${pokeEntry.num} - ${capitalizeFirstLetter(pokeEntry.species)}`, pokeEntry.sprite)
-        .setImage(`https://play.pokemonshowdown.com/sprites/${args.shines ? 'xyani-shiny' : 'xyani'}/${pokeEntry.species.toLowerCase().replace(' ', '')}.gif`)
+        .setColor(this.fetchColor(pokeSearch[0].color))
+        .setAuthor(`#${pokeSearch[0].num} - ${capitalizeFirstLetter(pokeSearch[0].species)}`, pokeSearch[0].sprite)
+        .setImage(`https://play.pokemonshowdown.com/sprites/${shines ? 'xyani-shiny' : 'xyani'}/${pokeSearch[0].species.toLowerCase().replace(' ', '')}.gif`)
         .setThumbnail('https://favna.xyz/images/ribbonhost/unovadexclosed.png')
         .setDescription('Dex entries throughout the games starting at the latest one. Possibly not listing all available due to 2000 characters limit.');
 
-      if (pokeEntry.num === 0) {
+      if (pokeSearch[0].num === 0) {
         const fields = [];
 
         for (const field in dataEmbed.fields) {
           fields.push({
-            'name': zalgo(dataEmbed.fields[field].name),
-            'value': zalgo(dataEmbed.fields[field].value),
-            'inline': dataEmbed.fields[field].inline
+            name: zalgo(dataEmbed.fields[field].name),
+            value: zalgo(dataEmbed.fields[field].value),
+            inline: dataEmbed.fields[field].inline
           });
         }
 
@@ -203,17 +208,14 @@ module.exports = class FlavorCommand extends commando.Command {
         dataEmbed.author.name = zalgo(dataEmbed.author.name);
         dataEmbed.setImage('https://favna.xyz/images/ribbonhost/missingno.png');
       }
-
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.embed(dataEmbed);
     }
-    this.match.setThreshold(4);
-    const dym = this.match.get(args.pokemon), // eslint-disable-line one-var
-      dymString = dym !== null ? `Did you mean \`${dym}\`?` : 'Maybe you misspelt the Pokémon\'s name?';
-
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.reply(`Dex entry not found! ${dymString}`);
+    return msg.reply('no Pokémon found.');
   }
 };

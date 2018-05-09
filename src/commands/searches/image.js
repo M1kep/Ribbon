@@ -34,34 +34,33 @@
  * @returns {MessageEmbed} Embedded image and search query
  */
 
-const {MessageEmbed} = require('discord.js'),
-  cheerio = require('cheerio'),
-  commando = require('discord.js-commando'),
-  request = require('snekfetch'), 
-  {deleteCommandMessages} = require('../../util.js'), 
-  {googleapikey, imageEngineKey} = require('../../auth.json');
+const cheerio = require('cheerio'),
+  request = require('snekfetch'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class ImageCommand extends commando.Command {
+module.exports = class ImageCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'image',
-      'memberName': 'image',
-      'group': 'searches',
-      'aliases': ['img', 'i'],
-      'description': 'Finds an image through google',
-      'format': 'ImageQuery',
-      'examples': ['image Pyrrha Nikos'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'image',
+      memberName: 'image',
+      group: 'searches',
+      aliases: ['img', 'i'],
+      description: 'Finds an image through google',
+      format: 'ImageQuery',
+      examples: ['image Pyrrha Nikos'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'query',
-          'prompt': 'What do you want to find images of?',
-          'type': 'string',
-          'parse': p => p.replace(/(who|what|when|where) ?(was|is|were|are) ?/gi, '')
+          key: 'query',
+          prompt: 'What do you want to find images of?',
+          type: 'string',
+          parse: p => p.replace(/(who|what|when|where) ?(was|is|were|are) ?/gi, '')
             .split(' ')
             .map(x => encodeURIComponent(x))
             .join('+')
@@ -71,22 +70,24 @@ module.exports = class ImageCommand extends commando.Command {
   }
 
   async run (msg, args) {
+    startTyping(msg);
     const embed = new MessageEmbed();
 
     let res = await request.get('https://www.googleapis.com/customsearch/v1')
-      .query('cx', imageEngineKey)
-      .query('key', googleapikey)
+      .query('cx', process.env.imagekey)
+      .query('key', process.env.googleapikey)
       .query('safe', msg.guild ? msg.channel.nsfw ? 'off' : 'medium' : 'high') // eslint-disable-line no-nested-ternary
       .query('searchType', 'image')
       .query('q', args.query);
 
     if (res && res.body.items) {
       embed
-        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
         .setImage(res.body.items[0].link)
-        .setFooter(`Search query: "${args.query}"`);
+        .setFooter(`Search query: "${args.query.replace(/\+/g, ' ')}"`);
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.embed(embed);
     }
@@ -104,17 +105,18 @@ module.exports = class ImageCommand extends commando.Command {
           .attr('src');
 
       embed
-        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
         .setImage(result)
         .setFooter(`Search query: "${args.query}"`);
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.embed(embed);
     }
-
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.reply('***nothing found***');
+    return msg.reply(`nothing found for \`${args.query}\``);
   }
 };

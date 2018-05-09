@@ -24,7 +24,7 @@
  */
 
 /**
- * @file Moderation RegexMatchToggleCommand - Toggle Toggle commands matching on regex for this server  
+ * @file Moderation RegexMatchToggleCommand - Toggle commands matching on regex for this server  
  * **Aliases**: `rmt`, `regexmatch`
  * @module
  * @category moderation
@@ -34,31 +34,31 @@
  * @returns {Message} Confirmation the setting was stored
  */
 
-const commando = require('discord.js-commando'),
-  {oneLine} = require('common-tags'),
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'), 
+  {oneLine} = require('common-tags'), 
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class RegexMatchToggleCommand extends commando.Command {
+module.exports = class RegexMatchToggleCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'regexmatchtoggle',
-      'memberName': 'regexmatchtoggle',
-      'group': 'moderation',
-      'aliases': ['rmt', 'regexmatch'],
-      'description': 'Toggle Toggle commands matching on regex for this server',
-      'format': 'Enable|Disable',
-      'examples': ['regexmatchtoggle enable'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'regexmatchtoggle',
+      memberName: 'regexmatchtoggle',
+      group: 'moderation',
+      aliases: ['rmt', 'regexmatch'],
+      description: 'Toggle commands matching on regex for this server',
+      format: 'Enable|Disable',
+      examples: ['regexmatchtoggle enable'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'option',
-          'prompt': 'Enable or disable memberlogs?',
-          'type': 'boolean',
-          'validate': (bool) => {
+          key: 'option',
+          prompt: 'Enable or disable memberlogs?',
+          type: 'boolean',
+          validate: (bool) => {
             const validBools = ['true', 't', 'yes', 'y', 'on', 'enable', 'enabled', '1', '+', 'false', 'f', 'no', 'n', 'off', 'disable', 'disabled', '0', '-'];
 
             if (validBools.includes(bool.toLowerCase())) {
@@ -77,9 +77,11 @@ module.exports = class RegexMatchToggleCommand extends commando.Command {
   }
 
   run (msg, args) {
+    startTyping(msg);
     this.client.provider.set(msg.guild.id, 'regexmatches', args.option);
 
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(oneLine`RegEx Matches have been ${args.option ? 'enabled' : 'disabled'}.`);
   }

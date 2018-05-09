@@ -27,7 +27,6 @@
  * @file Music ViewQueueCommand - Shows the current queue of songs  
  * Songs are paginated in sets of 5  
  * **Aliases**: `songs`, `song-list`, `list`, `listqueue`
- * **Aliases**: `bal`, `cash`, `balance`
  * @module
  * @category music
  * @name queue
@@ -36,63 +35,60 @@
  * @returns {MessageEmbed} List of queued songs with their duration and total duration of the queue
  */
 
-const commando = require('discord.js-commando'),
+const {Command, util} = require('discord.js-commando'),
   {oneLine, stripIndents} = require('common-tags'),
-  path = require('path'),
-  Song = require(path.join(__dirname, '../../data/melody/SongStructure.js')), // eslint-disable-line sort-vars
-  {PAGINATED_ITEMS} = require(path.join(__dirname, '../../data/melody/GlobalData.js')),
-  {deleteCommandMessages} = require('../../util.js');
+  {deleteCommandMessages, Song, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class ViewQueueCommand extends commando.Command {
+module.exports = class ViewQueueCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'queue',
-      'memberName': 'queue',
-      'group': 'music',
-      'aliases': ['songs', 'song-list', 'list', 'listqueue'],
-      'description': 'Lists the queued songs.',
-      'format': '[PageNumber]',
-      'examples': ['queue 2'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'queue',
+      memberName: 'queue',
+      group: 'music',
+      aliases: ['songs', 'song-list', 'list', 'listqueue'],
+      description: 'Lists the queued songs.',
+      format: '[PageNumber]',
+      examples: ['queue 2'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'page',
-          'prompt': 'what page would you like to view?',
-          'type': 'integer',
-          'default': 1
+          key: 'page',
+          prompt: 'what page would you like to view?',
+          type: 'integer',
+          default: 1
         }
       ]
     });
   }
 
   run (msg, args) {
+    startTyping(msg);
     const queue = this.queue.get(msg.guild.id);
 
     if (!queue) {
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply('there are no songs in the queue. Why not put something in my jukebox?');
     }
 
     const currentSong = queue.songs[0], // eslint-disable-line one-var
       currentTime = currentSong.dispatcher ? currentSong.dispatcher.streamTime / 1000 : 0,
-      paginated = commando.util.paginate(queue.songs, args.page, Math.floor(PAGINATED_ITEMS)),
+      paginated = util.paginate(queue.songs, args.page, Math.floor(process.env.PAGINATED_ITEMS)),
       totalLength = queue.songs.reduce((prev, song) => prev + song.length, 0);
 
-    deleteCommandMessages(msg, this.client);
-
-    return msg.embed({
-      'color': msg.guild ? msg.guild.me.displayColor : 10610610,
-      'author': {
-        'name': `${msg.author.tag} (${msg.author.id})`,
-        'icon_url': msg.author.displayAvatarURL({'format': 'png'})
+    msg.embed({
+      color: msg.guild ? msg.guild.me.displayColor : 10610610,
+      author: {
+        name: `${msg.author.tag} (${msg.author.id})`,
+        iconURL: msg.author.displayAvatarURL({format: 'png'})
       },
       /* eslint-disable max-len */
-      'description': stripIndents`
+      description: stripIndents`
                     __**Song queue, page ${paginated.page}**__
                     ${paginated.items.map(song => `**-** ${!isNaN(song.id) ? `${song.name} (${song.lengthString})` : `[${song.name}](${`https://www.youtube.com/watch?v=${song.id}`})`} (${song.lengthString})`).join('\n')}
                     ${paginated.maxPage > 1 ? `\nUse ${msg.usage()} to view a specific page.\n` : ''}
@@ -108,6 +104,9 @@ module.exports = class ViewQueueCommand extends commando.Command {
                 `
       /* eslint-enable max-len */
     });
+    deleteCommandMessages(msg, this.client);
+
+    return stopTyping(msg);
   }
 
   get queue () {

@@ -34,22 +34,23 @@
  * @returns {MessageEmbed} A MessageEmbed with a spiteful image and a mention to kai. Also deletes the other kai spites 🤔
  */
 
-const commando = require('discord.js-commando'),
-  {stripIndents} = require('common-tags');
+const {Command} = require('discord.js-commando'), 
+  {stripIndents} = require('common-tags'), 
+  {stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class KaiCommand extends commando.Command {
+module.exports = class KaiCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'kai',
-      'memberName': 'kai',
-      'group': 'custom',
-      'description': 'Kai get lost',
-      'details': 'Custom commands can be made for your server too! Just join the support server (use the `stats` command) and request the command.',
-      'guildOnly': true,
-      'patterns': [/^\.kai$/im],
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'kai',
+      memberName: 'kai',
+      group: 'custom',
+      description: 'Kai get lost',
+      details: 'Custom commands can be made for your server too! Just join the support server (use the `stats` command) and request the command.',
+      guildOnly: true,
+      patterns: [/^\.kai$/im],
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
@@ -64,7 +65,8 @@ module.exports = class KaiCommand extends commando.Command {
         'https://favna.xyz/images/ribbonhost/kai/antikai06.gif',
         'https://favna.xyz/images/ribbonhost/kai/antikai07.png',
         'https://favna.xyz/images/ribbonhost/kai/antikai08.png',
-        'https://favna.xyz/images/ribbonhost/kai/antikai09.png'
+        'https://favna.xyz/images/ribbonhost/kai/antikai09.png',
+        'https://favna.xyz/images/ribbonhost/kai/antikai10.png'
       ],
       curImage = Math.floor(Math.random() * images.length); // eslint-disable-line sort-vars
 
@@ -86,12 +88,14 @@ module.exports = class KaiCommand extends commando.Command {
 
   run (msg) {
     if (this.client.provider.get(msg.guild.id, 'regexmatches', false)) {
+      startTyping(msg);
       msg.delete();
       msg.embed({
-        'image': {'url': this.fetchImage()},
-        'color': msg.guild ? msg.guild.me.displayColor : 10610610
+        image: {url: this.fetchImage()},
+        color: msg.guild ? msg.guild.me.displayColor : 10610610
       },
       'Please <@418504046337589249> get lost');
+      stopTyping(msg);
     }
   }
 };

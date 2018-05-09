@@ -32,27 +32,28 @@
  * @returns {MessageEmbed} Ribbon's statistics
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  duration = require('moment-duration-format'), // eslint-disable-line no-unused-vars
-  moment = require('moment'), 
+const duration = require('moment-duration-format'), // eslint-disable-line no-unused-vars
+  moment = require('moment'),
+  process = require('process'),
+  speedTest = require('speedtest-net'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
   {oneLine} = require('common-tags'),
-  process = require('process'), 
-  {deleteCommandMessages} = require('../../util.js');
+  {deleteCommandMessages, roundNumber, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class RibbonStatsCommand extends commando.Command {
+module.exports = class RibbonStatsCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'stats',
-      'memberName': 'stats',
-      'group': 'info',
-      'aliases': ['botinfo', 'info'],
-      'description': 'Gets statistics about Ribbon',
-      'examples': ['stats'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'stats',
+      memberName: 'stats',
+      group: 'info',
+      aliases: ['botinfo', 'info'],
+      description: 'Gets statistics about Ribbon',
+      examples: ['stats'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
@@ -68,33 +69,53 @@ module.exports = class RibbonStatsCommand extends commando.Command {
     }
   }
 
-  run (msg) {
-    const statsEmbed = new MessageEmbed();
+  async run (msg) {
+    startTyping(msg);
+    const speed = speedTest({
+        maxTime: 5000,
+        serverId: 3242
+      }),
+      statsEmbed = new MessageEmbed();
 
     statsEmbed
-      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
       .setAuthor('Ribbon Bot Stats', 'https://favna.xyz/images/appIcons/ribbon.png')
       .addField('Guilds', this.client.guilds.size, true)
       .addField('Channels', this.client.channels.size, true)
       .addField('Users', this.client.users.size, true)
       .addField('Owner', this.client.owners[0].tag, true)
       .addField('License', 'GPL-3.0 + 7b & 7c', true)
-      .addField('MessageEmbedJS', '12.0', true)
+      .addField('DiscordJS', 'master', true)
       .addField('NodeJS', process.version, true)
       .addField('Platform', this.fetchPlatform(process.platform.toLowerCase()), true)
-      .addField('Memory Usage', `${Math.round(process.memoryUsage().heapUsed / 10485.76) / 100} MB`, true)
+      .addField('Memory Usage', `${roundNumber(process.memoryUsage().heapUsed / 10485.76) / 100} MB`, true)
       .addField('Invite Me', '[Click Here](https://discord.now.sh/376520643862331396?p8)', true)
       .addField('Source', '[Available on GitHub](https://github.com/favna/ribbon)', true)
       .addField('Support', '[Server Invite](https://discord.gg/zdt5yQt)', true)
-      .addField('Uptime', moment.duration(this.client.uptime).format('DD [days], HH [hours and] mm [minutes]'))
-      .addField('Current server time', moment().format('MMMM Do YYYY [|] HH:mm.ss [UTC]ZZ'))
+      .addField('Uptime', moment.duration(this.client.uptime).format('DD [days], HH [hours and] mm [minutes]'), true)
+      .addField('Current server time', moment().format('MMMM Do YYYY [|] HH:mm.ss [UTC]ZZ'), false)
       .addField('\u200b', oneLine`Use the \`${msg.guild ? msg.guild.commandPrefix : this.client.commandPrefix}help\` command to get the list of commands available to you in a DM. 
             The default prefix is \`!\`. You can change this with the \`${msg.guild ? msg.guild.commandPrefix : this.client.commandPrefix}prefix\` command. 
             If you ever forget the command prefix, just use \`${this.client.user.tag} prefix\``)
       .setFooter(`Ribbon | ${moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}`, 'https://favna.xyz/images/appIcons/ribbon.png');
 
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.embed(statsEmbed);
+    const statMessage = await msg.embed(statsEmbed); // eslint-disable-line one-var
+
+    speed.on('data', (data) => {
+      statsEmbed.fields.pop();
+      statsEmbed.fields.pop();
+      statsEmbed
+        .addField('Download Speed', `${roundNumber(data.speeds.download, 2)} Mbps`, true)
+        .addField('Upload Speed', `${roundNumber(data.speeds.upload, 2)} Mbps`, true)
+        .addField('Current server time', moment().format('MMMM Do YYYY [|] HH:mm.ss [UTC]ZZ'), false)
+        .addField('\u200b', oneLine`Use the \`${msg.guild ? msg.guild.commandPrefix : this.client.commandPrefix}help\` command to get the list of commands available to you in a DM. 
+      The default prefix is \`!\`. You can change this with the \`${msg.guild ? msg.guild.commandPrefix : this.client.commandPrefix}prefix\` command. 
+      If you ever forget the command prefix, just use \`${this.client.user.tag} prefix\``);
+
+      statMessage.edit('', {embed: statsEmbed});
+    });
   }
 };

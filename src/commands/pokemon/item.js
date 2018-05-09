@@ -35,90 +35,87 @@
  * @returns {MessageEmbed} Description and external links for the item
  */
 
-const Matcher = require('did-you-mean'),
-  commando = require('discord.js-commando'),
+const Fuse = require('fuse.js'),
   path = require('path'),
-  underscore = require('underscore'),
+  {Command} = require('discord.js-commando'),
   {MessageEmbed} = require('discord.js'),
   {BattleItems} = require(path.join(__dirname, '../../data/dex/items')),
   {ItemAliases} = require(path.join(__dirname, '../../data/dex/aliases')),
   {oneLine} = require('common-tags'),
-  {capitalizeFirstLetter, deleteCommandMessages} = require('../../util.js');
+  {
+    capitalizeFirstLetter,
+    deleteCommandMessages,
+    stopTyping,
+    startTyping
+  } = require('../../util.js');
 
-module.exports = class ItemCommand extends commando.Command {
+module.exports = class ItemCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'item',
-      'memberName': 'item',
-      'group': 'pokemon',
-      'aliases': ['it', 'bag'],
-      'description': 'Get the info on an item in Pokémon',
-      'format': 'ItemName',
-      'examples': ['item Life Orb'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'item',
+      memberName: 'item',
+      group: 'pokemon',
+      aliases: ['it', 'bag'],
+      description: 'Get the info on an item in Pokémon',
+      format: 'ItemName',
+      examples: ['item Life Orb'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'item',
-          'prompt': 'Get info on which item?',
-          'type': 'string',
-          'parse': p => p.toLowerCase().replace(/ /g, '')
+          key: 'item',
+          prompt: 'Get info on which item?',
+          type: 'string',
+          parse: p => p.toLowerCase().replace(/ /g, '')
         }
       ]
     });
-
-    this.match = [];
   }
 
-  run (msg, args) {
-    const itemEmbed = new MessageEmbed();
+  run (msg, {item}) {
+    startTyping(msg);
+    /* eslint-disable sort-vars */
+    const fsoptions = {
+        shouldSort: true,
+        threshold: 0.6,
+        location: 0,
+        distance: 100,
+        maxPatternLength: 32,
+        minMatchCharLength: 1,
+        keys: ['alias', 'item', 'id', 'name']
+      },
+      aliasFuse = new Fuse(ItemAliases, fsoptions),
+      itemFuse = new Fuse(BattleItems, fsoptions),
+      aliasSearch = aliasFuse.search(item),
+      itemSearch = aliasSearch.length ? itemFuse.search(aliasSearch[0].item) : itemFuse.search(item),
+      itemEmbed = new MessageEmbed();
+    /* eslint-enable sort-vars */
 
-    let itemEntry = {};
-
-    if (ItemAliases[args.item]) {
-      args.item = ItemAliases[args.item];
-      this.match = new Matcher(Object.keys(ItemAliases).join(' '));
-    } else {
-      this.match = new Matcher(Object.keys(BattleItems).join(' '));
-    }
-
-    itemEntry = BattleItems[args.item];
-
-    for (const item in BattleItems) {
-      if (BattleItems[item].id.toLowerCase() === args.item.toLowerCase() || BattleItems[item].name.toLowerCase() === args.item.toLowerCase()) {
-        itemEntry = BattleItems[item];
-        break;
-      }
-    }
-
-    if (!underscore.isEmpty(itemEntry)) {
+    if (itemSearch.length) {
       itemEmbed
-        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
         .setThumbnail('https://favna.xyz/images/ribbonhost/unovadexclosed.png')
-        .setAuthor(`${capitalizeFirstLetter(itemEntry.name)}`, `https://play.pokemonshowdown.com/sprites/itemicons/${itemEntry.name.toLowerCase().replace(/ /g, '-')}.png`)
-        .addField('Description', itemEntry.desc)
-        .addField('Generation Introduced', itemEntry.gen)
+        .setAuthor(`${capitalizeFirstLetter(itemSearch[0].name)}`, `https://play.pokemonshowdown.com/sprites/itemicons/${itemSearch[0].name.toLowerCase().replace(/ /g, '-')}.png`)
+        .addField('Description', itemSearch[0].desc)
+        .addField('Generation Introduced', itemSearch[0].gen)
         .addField('External Resources', oneLine`
-			[Bulbapedia](http://bulbapedia.bulbagarden.net/wiki/${capitalizeFirstLetter(itemEntry.name.replace(' ', '_').replace('\'', ''))})  
-			|  [Smogon](http://www.smogon.com/dex/sm/items/${itemEntry.name.toLowerCase().replace(' ', '_')
+			[Bulbapedia](http://bulbapedia.bulbagarden.net/wiki/${capitalizeFirstLetter(itemSearch[0].name.replace(' ', '_').replace('\'', ''))})  
+			|  [Smogon](http://www.smogon.com/dex/sm/items/${itemSearch[0].name.toLowerCase().replace(' ', '_')
     .replace('\'', '')})  
-			|  [PokémonDB](http://pokemondb.net/item/${itemEntry.name.toLowerCase().replace(' ', '-')
+			|  [PokémonDB](http://pokemondb.net/item/${itemSearch[0].name.toLowerCase().replace(' ', '-')
     .replace('\'', '')})`);
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
-      return msg.embed(itemEmbed, `**${capitalizeFirstLetter(itemEntry.name)}**`);
+      return msg.embed(itemEmbed, `**${capitalizeFirstLetter(itemSearch[0].name)}**`);
     }
-    this.match.setThreshold(4);
-    const dym = this.match.get(args.item), // eslint-disable-line one-var
-      dymString = dym !== null ? `Did you mean \`${dym}\`?` : 'Maybe you misspelt the item name?';
-
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.reply(`Item not found! ${dymString}`);
-
+    return msg.reply('no item found. Be sure it is an item that has an effect in battles!');
   }
 };

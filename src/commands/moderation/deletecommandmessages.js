@@ -34,31 +34,31 @@
  * @returns {Message} Confirmation the setting was stored
  */
 
-const commando = require('discord.js-commando'),
-  {oneLine} = require('common-tags'),
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'), 
+  {oneLine} = require('common-tags'), 
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class deleteCommandMessagesCommand extends commando.Command {
+module.exports = class deleteCommandMessagesCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'deletecommandmessages',
-      'memberName': 'deletecommandmessages',
-      'group': 'moderation',
-      'aliases': ['dcm'],
-      'description': 'Configure whether the bot should delete command messages',
-      'format': 'Enable|Disable',
-      'examples': ['deletecommandmessages enable'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'deletecommandmessages',
+      memberName: 'deletecommandmessages',
+      group: 'moderation',
+      aliases: ['dcm'],
+      description: 'Configure whether the bot should delete command messages',
+      format: 'Enable|Disable',
+      examples: ['deletecommandmessages enable'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'option',
-          'prompt': 'Enable or disable deleting of command messages?',
-          'type': 'boolean',
-          'validate': (bool) => {
+          key: 'option',
+          prompt: 'Enable or disable deleting of command messages?',
+          type: 'boolean',
+          validate: (bool) => {
             const validBools = ['true', 't', 'yes', 'y', 'on', 'enable', 'enabled', '1', '+', 'false', 'f', 'no', 'n', 'off', 'disable', 'disabled', '0', '-'];
 
             if (validBools.includes(bool.toLowerCase())) {
@@ -76,11 +76,13 @@ module.exports = class deleteCommandMessagesCommand extends commando.Command {
     return this.client.isOwner(msg.author) || msg.member.hasPermission('ADMINISTRATOR');
   }
 
-  run (msg, args) {
-    this.client.provider.set(msg.guild.id, 'deletecommandmessages', args.option);
+  run (msg, {option}) {
+    startTyping(msg);
+    this.client.provider.set(msg.guild.id, 'deletecommandmessages', option);
 
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.reply(oneLine`command messages will now be ${args.option ? 'deleted' : 'kept'}.`);
+    return msg.reply(oneLine`command messages will now be ${option ? 'deleted' : 'kept'}.`);
   }
 };

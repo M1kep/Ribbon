@@ -35,32 +35,31 @@
  * @returns {MessageEmbed} Various statistics about the current forecast
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'),
-  weather = require('yahoo-weather'), 
-  {deleteCommandMessages} = require('../../util.js');
+const weather = require('yahoo-weather'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class WeatherCommand extends commando.Command {
+module.exports = class WeatherCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'weather',
-      'memberName': 'weather',
-      'group': 'extra',
-      'aliases': ['temp', 'forecast', 'fc', 'wth'],
-      'description': 'Get the weather in a city',
-      'format': 'CityName',
-      'examples': ['weather amsterdam'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'weather',
+      memberName: 'weather',
+      group: 'extra',
+      aliases: ['temp', 'forecast', 'fc', 'wth'],
+      description: 'Get the weather in a city',
+      format: 'CityName',
+      examples: ['weather amsterdam'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'city',
-          'prompt': 'For which city would you like to get the weather?',
-          'type': 'string'
+          key: 'city',
+          prompt: 'For which city would you like to get the weather?',
+          type: 'string'
         }
       ]
     });
@@ -113,15 +112,17 @@ module.exports = class WeatherCommand extends commando.Command {
   }
 
   async run (msg, args) {
+    startTyping(msg);
     const info = await weather(args.city),
       weatherEmbed = new MessageEmbed();
 
     if (info) {
       weatherEmbed
         .setAuthor(`Weather data for ${info.location.city} - ${info.location.country}`)
-        .setFooter(`Weather data pulled from ${info.image.title} on ${moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}`)
         .setThumbnail(info.item.description.slice(19, 56))
-        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
+        .setFooter('Powered by Yahoo! Weather')
+        .setTimestamp()
         .addField('💨 Wind Speed', `${info.wind.speed} ${info.units.speed}`, true)
         .addField('💧 Humidity', `${info.atmosphere.humidity}%`, true)
         .addField('🌅 Sunrise', this.convertTimeFormat(info.astronomy.sunrise), true)
@@ -136,10 +137,12 @@ module.exports = class WeatherCommand extends commando.Command {
           `High: ${info.item.forecast[2].high} °${info.units.temperature} | Low: ${info.item.forecast[2].low} °${info.units.temperature}`, true);
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.embed(weatherEmbed);
     }
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply('an error occurred getting weather info for that city');
   }

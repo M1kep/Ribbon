@@ -34,30 +34,30 @@
  * @returns {Message} Confirmation the setting was stored
  */
 
-const commando = require('discord.js-commando'),
-  {oneLine} = require('common-tags'),
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'), 
+  {oneLine} = require('common-tags'), 
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class TwitchOutputCommand extends commando.Command {
+module.exports = class TwitchOutputCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'twitchoutput',
-      'memberName': 'twitchoutput',
-      'group': 'streamwatch',
-      'aliases': ['output', 'twitchout', 'twitchchannel'],
-      'description': 'Configures where Twitch Notifications are send to',
-      'format': 'ChannelID|ChannelName(partial or full)',
-      'examples': ['twitchoutput twitch'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'twitchoutput',
+      memberName: 'twitchoutput',
+      group: 'streamwatch',
+      aliases: ['output', 'twitchout', 'twitchchannel'],
+      description: 'Configures where Twitch Notifications are send to',
+      format: 'ChannelID|ChannelName(partial or full)',
+      examples: ['twitchoutput twitch'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'channel',
-          'prompt': 'What channel should I set for twitch notifications? (make sure to start with a # when going by name)',
-          'type': 'channel'
+          key: 'channel',
+          prompt: 'What channel should I set for twitch notifications? (make sure to start with a # when going by name)',
+          type: 'channel'
         }
       ]
     });
@@ -68,8 +68,10 @@ module.exports = class TwitchOutputCommand extends commando.Command {
   }
 
   run (msg, args) {
+    startTyping(msg);
     this.client.provider.set(msg.guild.id, 'twitchchannel', args.channel.id);
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(oneLine`📹 the channel to use for the twitch notifications has been set to <#${args.channel.id}>`);
   }

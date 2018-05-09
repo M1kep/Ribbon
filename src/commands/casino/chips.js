@@ -33,27 +33,27 @@
  * @returns {MessageEmbed} Information about your current balance
  */
 
-const {MessageEmbed} = require('discord.js'),
-  Database = require('better-sqlite3'),
-  commando = require('discord.js-commando'),
+const Database = require('better-sqlite3'),
   duration = require('moment-duration-format'), // eslint-disable-line no-unused-vars
   moment = require('moment'),
-  path = require('path'), 
-  {oneLine, stripIndents} = require('common-tags'), 
-  {deleteCommandMessages} = require('../../util.js');
+  path = require('path'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {oneLine, stripIndents} = require('common-tags'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class ChipsCommand extends commando.Command {
+module.exports = class ChipsCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'chips',
-      'memberName': 'chips',
-      'group': 'casino',
-      'aliases': ['bal', 'cash', 'balance'],
-      'description': 'Retrieves your current balance for the casino',
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'chips',
+      memberName: 'chips',
+      group: 'casino',
+      aliases: ['bal', 'cash', 'balance'],
+      description: 'Retrieves your current balance for the casino',
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
@@ -63,10 +63,11 @@ module.exports = class ChipsCommand extends commando.Command {
       conn = new Database(path.join(__dirname, '../../data/databases/casino.sqlite3'));
 
     balEmbed
-      .setAuthor(msg.member.displayName, msg.author.displayAvatarURL({'format': 'png'}))
-      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+      .setAuthor(msg.member.displayName, msg.author.displayAvatarURL({format: 'png'}))
+      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
       .setThumbnail('https://favna.xyz/images/ribbonhost/casinologo.png');
     try {
+      startTyping(msg);
       const query = conn.prepare(`SELECT * FROM "${msg.guild.id}" WHERE userID = ?;`).get(msg.author.id);
 
       if (query) {
@@ -80,32 +81,37 @@ module.exports = class ChipsCommand extends commando.Command {
           ${!(dura._milliseconds <= 0) ? dura.format('[in] HH[ hour(s) and ]mm[ minute(s)]') : 'Right now!'}`);
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(balEmbed);
       }
       conn.prepare(`INSERT INTO "${msg.guild.id}" VALUES ($userid, $balance, $date);`).run({
-        'userid': msg.author.id,
-        'balance': '500',
-        'date': moment().format('YYYY-MM-DD HH:mm')
+        userid: msg.author.id,
+        balance: '500',
+        date: moment().format('YYYY-MM-DD HH:mm')
       });
-    } catch (e) {
-      if (/(?:no such table)/i.test(e.toString())) {
+      stopTyping(msg);
+    } catch (err) {
+      stopTyping(msg);
+      if (/(?:no such table)/i.test(err.toString())) {
         conn.prepare(`CREATE TABLE IF NOT EXISTS "${msg.guild.id}" (userID TEXT PRIMARY KEY, balance INTEGER, lasttopup TEXT);`).run();
-
+        
         conn.prepare(`INSERT INTO "${msg.guild.id}" VALUES ($userid, $balance, $date);`).run({
-          'userid': msg.author.id,
-          'balance': '500',
-          'date': moment().format('YYYY-MM-DD HH:mm')
+          userid: msg.author.id,
+          balance: '500',
+          date: moment().format('YYYY-MM-DD HH:mm')
         });
       } else {
-        console.error(`	 ${stripIndents`Fatal SQL Error occurred while getting someones balance!
-        Server: ${msg.guild.name} (${msg.guild.id})
-        Author: ${msg.author.tag} (${msg.author.id})
-        Time: ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
-        Error Message:`} ${e}`);
+        this.client.channels.resolve(process.env.ribbonlogchannel).send(stripIndents`
+        <@${this.client.owners[0].id}> Error occurred in \`chips\` command!
+        **Server:** ${msg.guild.name} (${msg.guild.id})
+        **Author:** ${msg.author.tag} (${msg.author.id})
+        **Time:** ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
+        **Error Message:** ${err}
+        `);
 
-        return msg.reply(oneLine`Fatal Error occurred that was logged on Favna\'s system.
-                You can contact him on his server, get an invite by using the \`${msg.guild.commandPrefix}invite\` command `);
+        return msg.reply(oneLine`An error occurred but I notified ${this.client.owners[0].username}
+        Want to know more about the error? Join the support server by getting an invite by using the \`${msg.guild.commandPrefix}invite\` command `);
       }
     }
 

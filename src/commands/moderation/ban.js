@@ -35,38 +35,37 @@
  * @returns {MessageEmbed} Log of the ban
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'), 
-  {oneLine} = require('common-tags'), 
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {oneLine, stripIndents} = require('common-tags'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class banCommand extends commando.Command {
+module.exports = class banCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'ban',
-      'memberName': 'ban',
-      'group': 'moderation',
-      'aliases': ['b', 'banana'],
-      'description': 'Bans a member from the server',
-      'format': 'MemberID|MemberName(partial or full) [ReasonForBanning]',
-      'examples': ['ban JohnDoe annoying'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'ban',
+      memberName: 'ban',
+      group: 'moderation',
+      aliases: ['b', 'banana'],
+      description: 'Bans a member from the server',
+      format: 'MemberID|MemberName(partial or full) [ReasonForBanning]',
+      examples: ['ban JohnDoe annoying'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'member',
-          'prompt': 'Which member should I ban?',
-          'type': 'member'
+          key: 'member',
+          prompt: 'Which member should I ban?',
+          type: 'member'
         },
         {
-          'key': 'reason',
-          'prompt': 'What is the reason for this banishment?',
-          'type': 'string',
-          'default': ''
+          key: 'reason',
+          prompt: 'What is the reason for this banishment?',
+          type: 'string',
+          default: ''
         }
       ]
     });
@@ -77,11 +76,16 @@ module.exports = class banCommand extends commando.Command {
   }
 
   run (msg, args) {
+    startTyping(msg);
     if (args.member.id === msg.author.id) {
+      stopTyping(msg);
+
       return msg.reply('I don\'t think you want to ban yourself.');
     }
 
     if (!args.member.bannable) {
+      stopTyping(msg);
+
       return msg.reply('I cannot ban that member, their role is probably higher than my own!');
     }
 
@@ -91,23 +95,24 @@ module.exports = class banCommand extends commando.Command {
     }
 
     args.member.ban({
-      'days': args.keepmessages ? 0 : 1,
-      'reason': args.reason !== '' ? args.reason : 'No reason given by staff'
+      days: args.keepmessages ? 0 : 1,
+      reason: args.reason !== '' ? args.reason : 'No reason given by staff'
     });
 
-    const embed = new MessageEmbed(),
-      modLogs = this.client.provider.get(msg.guild, 'modlogchannel',
+    const banEmbed = new MessageEmbed(),
+      modlogChannel = this.client.provider.get(msg.guild, 'modlogchannel',
         msg.guild.channels.exists('name', 'mod-logs')
           ? msg.guild.channels.find('name', 'mod-logs').id
           : null);
 
-    embed
+    banEmbed
       .setColor('#FF1900')
       .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-      .setDescription(`**Member:** ${args.member.user.tag} (${args.member.id})\n` +
-        '**Action:** Ban\n' +
-        `**Reason:** ${args.reason !== '' ? args.reason : 'No reason given by staff'}`)
-      .setFooter(moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z'));
+      .setDescription(stripIndents`
+      **Member:** ${args.member.user.tag} (${args.member.id})
+      **Action:** Ban
+      **Reason:** ${args.reason !== '' ? args.reason : 'No reason given by staff'}`)
+      .setTimestamp();
 
     if (this.client.provider.get(msg.guild, 'modlogs', true)) {
       if (!this.client.provider.get(msg.guild, 'hasSentModLogMessage', false)) {
@@ -116,13 +121,11 @@ module.exports = class banCommand extends commando.Command {
 					This message will only show up this one time and never again after this so if you desire to set up mod logs make sure to do so now.`);
         this.client.provider.set(msg.guild, 'hasSentModLogMessage', true);
       }
-
-      deleteCommandMessages(msg, this.client);
-
-      return modLogs ? msg.guild.channels.get(modLogs).send({embed}) : msg.embed(embed);
+      modlogChannel ? msg.guild.channels.get(modlogChannel).send('', {embed: banEmbed}) : null;
     }
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.embed(embed);
+    return msg.embed(banEmbed);
   }
 };

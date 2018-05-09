@@ -35,34 +35,33 @@
  * @returns {Message} Result of your search
  */
 
-const {MessageEmbed} = require('discord.js'),
-  cheerio = require('cheerio'),
-  commando = require('discord.js-commando'),
-  request = require('snekfetch'), 
-  {deleteCommandMessages} = require('../../util.js'), 
-  {googleapikey, searchEngineKey} = require('../../auth.json');
+const cheerio = require('cheerio'),
+  request = require('snekfetch'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class GoogleCommand extends commando.Command {
+module.exports = class GoogleCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'google',
-      'memberName': 'google',
-      'group': 'searches',
-      'aliases': ['search', 'g'],
-      'description': 'Finds anything on google',
-      'format': 'GoogleQuery',
-      'examples': ['google Pyrrha Nikos'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'google',
+      memberName: 'google',
+      group: 'searches',
+      aliases: ['search', 'g'],
+      description: 'Finds anything on google',
+      format: 'GoogleQuery',
+      examples: ['google Pyrrha Nikos'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'query',
-          'prompt': 'What do you want to google?',
-          'type': 'string',
-          'parse': p => p.replace(/(who|what|when|where) ?(was|is|were|are) ?/gi, '')
+          key: 'query',
+          prompt: 'What do you want to google?',
+          type: 'string',
+          parse: p => p.replace(/(who|what|when|where) ?(was|is|were|are) ?/gi, '')
             .split(' ')
             .map(uriComponent => encodeURIComponent(uriComponent))
             .join('+')
@@ -72,8 +71,9 @@ module.exports = class GoogleCommand extends commando.Command {
   }
   /* eslint-disable multiline-comment-style, lines-between-class-members, indent, lines-around-comment*/
 	async run (msg, args) {
+		startTyping(msg);
 		const knowledgeRes = await request.get('https://kgsearch.googleapis.com/v1/entities:search')
-			.query('key', googleapikey)
+			.query('key', process.env.googleapikey)
 			.query('limit', 1)
 			.query('indent', true)
 			.query('query', args.query);
@@ -99,18 +99,20 @@ module.exports = class GoogleCommand extends commando.Command {
 				.setDescription(`${result.detailedDescription.articleBody} [Learn More...](${result.detailedDescription.url.replace(/\(/, '%28').replace(/\)/, '%29')})`);
 
 			deleteCommandMessages(msg, this.client);
+			stopTyping(msg);
 
 			return msg.embed(knowledgeGraphEmbed);
 		}
 
 		const normalRes = await request.get('https://www.googleapis.com/customsearch/v1') // eslint-disable-line one-var
-			.query('key', googleapikey)
-			.query('cx', searchEngineKey)
+			.query('key', process.env.googleapikey)
+			.query('cx', process.env.searchkey)
 			.query('safe', msg.guild ? msg.channel.nsfw ? 'off' : 'medium' : 'high') // eslint-disable-line no-nested-ternary
 			.query('q', args.query);
 
-		if (normalRes && normalRes.body.queries.request[0].totalResults === '0') {
+		if (normalRes && normalRes.body.queries.request[0].totalResults !== '0') {
 			deleteCommandMessages(msg, this.client);
+			stopTyping(msg);
 
 			return msg.say(normalRes.body.items[0].link);
 		}
@@ -131,10 +133,13 @@ module.exports = class GoogleCommand extends commando.Command {
 			}
 
 			deleteCommandMessages(msg, this.client);
+			stopTyping(msg);
 
 			return msg.say(href.replace('/url?q=', '').split('&')[0]);
 		}
+		deleteCommandMessages(msg, this.client);
+		stopTyping(msg);
 
-		return msg.reply('***nothing found***');
+		return msg.reply(`nothing found for \`${args.query}\``);
 	}
 };

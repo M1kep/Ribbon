@@ -33,41 +33,45 @@
  * @returns {Message} Confirmation the music was paused
  */
 
-const commando = require('discord.js-commando'),
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'), 
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class PauseSongCommand extends commando.Command {
+module.exports = class PauseSongCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'pause',
-      'memberName': 'pause',
-      'group': 'music',
-      'aliases': ['shh', 'shhh', 'shhhh', 'shhhhh', 'hush', 'halt'],
-      'description': 'Pauses the currently playing song',
-      'examples': ['pause'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'pause',
+      memberName: 'pause',
+      group: 'music',
+      aliases: ['shh', 'shhh', 'shhhh', 'shhhhh', 'hush', 'halt'],
+      description: 'Pauses the currently playing song',
+      examples: ['pause'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
 
   run (msg) {
+    startTyping(msg);
     const queue = this.queue.get(msg.guild.id);
 
     if (!queue) {
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply('I am not playing any music right now, why not get me to start something?');
     }
     if (!queue.songs[0].dispatcher) {
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply('I can\'t pause a song that hasn\'t even begun playing yet.');
     }
     if (!queue.songs[0].playing) {
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply('pauseception is not possible 🤔');
     }
@@ -75,6 +79,7 @@ module.exports = class PauseSongCommand extends commando.Command {
     queue.songs[0].playing = false;
 
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(`paused the music. Use \`${msg.guild.commandPrefix}resume\` to continue playing.`);
   }

@@ -35,39 +35,40 @@
  * @returns {MessageEmbed} URL, duration and embedded thumbnail
  */
 
-const {MessageEmbed} = require('discord.js'),
-  Pornsearch = require('pornsearch'),
-  commando = require('discord.js-commando'), 
-  {deleteCommandMessages} = require('../../util.js');
+const Pornsearch = require('pornsearch'),
+  {MessageEmbed} = require('discord.js'),
+  {Command} = require('discord.js-commando'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class PornVidsCommand extends commando.Command {
+module.exports = class PornVidsCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'pornvids',
-      'memberName': 'pornvids',
-      'group': 'nsfw',
-      'aliases': ['porn', 'nsfwvids'],
-      'description': 'Search porn videos',
-      'format': 'NSFWToLookUp',
-      'examples': ['pornvids babe'],
-      'guildOnly': false,
-      'nsfw': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'pornvids',
+      memberName: 'pornvids',
+      group: 'nsfw',
+      aliases: ['porn', 'nsfwvids'],
+      description: 'Search porn videos',
+      format: 'NSFWToLookUp',
+      examples: ['pornvids babe'],
+      guildOnly: false,
+      nsfw: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'pornInput',
-          'prompt': 'What pornography do you want to find?',
-          'type': 'string'
+          key: 'porn',
+          prompt: 'What pornography do you want to find?',
+          type: 'string'
         }
       ]
     });
   }
 
   async run (msg, args) {
-    const search = new Pornsearch(args.pornInput),
+    startTyping(msg);
+    const search = new Pornsearch(args.porn),
       vids = await search.videos();
 
     if (vids) {
@@ -83,10 +84,13 @@ module.exports = class PornVidsCommand extends commando.Command {
         .addField('Porn video duration', vids[random].duration !== '' ? vids[random].duration : 'unknown', true);
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.embed(pornEmbed, vids[random].url);
     }
+    deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.reply('nothing found for that input');
+    return msg.reply(`nothing found for \`${args.porn}\``);
   }
 };

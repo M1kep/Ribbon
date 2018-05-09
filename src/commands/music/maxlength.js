@@ -36,30 +36,28 @@
  * @returns {Message} Confirmation the setting was stored
  */
 
-const commando = require('discord.js-commando'),
-  path = require('path'),
-  {MAX_LENGTH} = require(path.join(__dirname, '../../data/melody/GlobalData.js')),
+const {Command} = require('discord.js-commando'),
   {oneLine} = require('common-tags'),
-  {deleteCommandMessages} = require('../../util.js');
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class MaxLengthCommand extends commando.Command {
+module.exports = class MaxLengthCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'maxlength',
-      'memberName': 'maxlength',
-      'group': 'music',
-      'aliases': ['max-duration', 'max-song-length', 'max-song-duration'],
-      'description': 'Shows or sets the max song length.',
-      'details': oneLine`
+      name: 'maxlength',
+      memberName: 'maxlength',
+      group: 'music',
+      aliases: ['max-duration', 'max-song-length', 'max-song-duration'],
+      description: 'Shows or sets the max song length.',
+      details: oneLine`
             This is the maximum length of a song that users may queue, in minutes.
-            The default is ${MAX_LENGTH}.
+            The default is ${process.env.MAX_LENGTH}.
             Only administrators may change this setting.`,
-      'format': '[minutes|"default"]',
-      'examples': ['maxlength 10'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      format: '[minutes|"default"]',
+      examples: ['maxlength 10'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
@@ -69,10 +67,12 @@ module.exports = class MaxLengthCommand extends commando.Command {
   }
 
   run (msg, args) {
+    startTyping(msg);
     if (!args) {
-      const maxLength = this.client.provider.get(msg.guild.id, 'maxLength', MAX_LENGTH);
+      const maxLength = this.client.provider.get(msg.guild.id, 'maxLength', process.env.MAX_LENGTH);
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply(`the maximum length of a song is ${maxLength} minutes.`);
     }
@@ -80,18 +80,22 @@ module.exports = class MaxLengthCommand extends commando.Command {
     if (args.toLowerCase() === 'default') {
       this.client.provider.remove(msg.guild.id, 'maxLength');
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
-      return msg.reply(`set the maximum song length to the default (currently ${MAX_LENGTH} minutes).`);
+      return msg.reply(`set the maximum song length to the default (currently ${process.env.MAX_LENGTH} minutes).`);
     }
 
     const maxLength = parseInt(args, 10);
 
     if (isNaN(maxLength) || maxLength <= 0) {
+      stopTyping(msg);
+
       return msg.reply('invalid number provided.');
     }
 
     this.client.provider.set(msg.guild.id, 'maxLength', maxLength);
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(`set the maximum song length to ${maxLength} minutes.`);
   }

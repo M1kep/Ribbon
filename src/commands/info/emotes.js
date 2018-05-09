@@ -32,29 +32,29 @@
  * @returns {MessageEmbed} List of emotes
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'), 
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class EmotesCommand extends commando.Command {
+module.exports = class EmotesCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'emotes',
-      'memberName': 'emotes',
-      'group': 'info',
-      'aliases': ['listemo', 'emolist', 'listemoji', 'emote'],
-      'description': 'Gets all available custom emotes from the server',
-      'examples': ['emotes'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'emotes',
+      memberName: 'emotes',
+      group: 'info',
+      aliases: ['listemo', 'emolist', 'listemoji', 'emote'],
+      description: 'Gets all available custom emotes from the server',
+      examples: ['emotes'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
 
   run (msg) {
+    startTyping(msg);
     const embed = new MessageEmbed();
 
     let animEmotes = [],
@@ -65,9 +65,9 @@ module.exports = class EmotesCommand extends commando.Command {
     });
 
     embed
-      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
-      .setAuthor(`${staticEmotes.length + animEmotes.length} ${msg.guild.name} Emotes`, msg.guild.iconURL({'format': 'png'}))
-      .setFooter(`Emotes list from ${moment().format('MMMM Do YYYY [at] HH:mm [utc]Z')}`);
+      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
+      .setAuthor(`${staticEmotes.length + animEmotes.length} ${msg.guild.name} Emotes`, msg.guild.iconURL({format: 'png'}))
+      .setTimestamp();
 
     staticEmotes = staticEmotes.length !== 0 ? `__**${staticEmotes.length} Static Emotes**__\n${staticEmotes.join('')}` : '';
     animEmotes = animEmotes.length !== 0 ? `\n\n__**${animEmotes.length} Animated Emotes**__\n${animEmotes.join('')}` : '';
@@ -75,7 +75,8 @@ module.exports = class EmotesCommand extends commando.Command {
     embed.setDescription(staticEmotes + animEmotes);
 
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.channel.send(embed);
+    return msg.embed(embed);
   }
 };

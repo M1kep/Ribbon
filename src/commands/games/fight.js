@@ -35,48 +35,48 @@
  * @returns {MessageEmbed} Result of the combat
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'),
-  random = require('node-random'), 
-  {deleteCommandMessages} = require('../../util.js');
+const random = require('node-random'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class FightCommand extends commando.Command {
+module.exports = class FightCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'fight',
-      'memberName': 'fight',
-      'group': 'games',
-      'aliases': ['combat'],
-      'description': 'Pit two things against each other in a fight to the death',
-      'details': 'Winner is determined with random.org randomization',
-      'format': 'FirstFighter, SecondFighter',
-      'examples': ['fight Favna Chuck Norris'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'fight',
+      memberName: 'fight',
+      group: 'games',
+      aliases: ['combat'],
+      description: 'Pit two things against each other in a fight to the death',
+      details: 'Winner is determined with random.org randomization',
+      format: 'FirstFighter, SecondFighter',
+      examples: ['fight Favna Chuck Norris'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'fighterOne',
-          'prompt': 'Who or what is the first fighter?',
-          'type': 'string'
+          key: 'fighterOne',
+          prompt: 'Who or what is the first fighter?',
+          type: 'string'
         },
         {
-          'key': 'fighterTwo',
-          'prompt': 'What or what is the second fighter?',
-          'type': 'string'
+          key: 'fighterTwo',
+          prompt: 'What or what is the second fighter?',
+          type: 'string'
         }
       ]
     });
   }
 
   run (msg, args) {
+    startTyping(msg);
     const fighterEmbed = new MessageEmbed();
 
     fighterEmbed
-      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
       .setTitle('🥊 Fight Results 🥊')
       .setThumbnail('https://favna.xyz/images/ribbonhost/dbxlogo.png');
 
@@ -92,6 +92,7 @@ module.exports = class FightCommand extends commando.Command {
       }
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.embed(fighterEmbed);
     }
@@ -101,10 +102,11 @@ module.exports = class FightCommand extends commando.Command {
         .setImage('https://favna.xyz/images/ribbonhost/pyrrhawins.gif');
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.embed(fighterEmbed);
     }
-    random.integers({'number': 2}, (error, data) => {
+    random.integers({number: 2}, (error, data) => {
       if (!error) {
         const fighterOneChance = parseInt(data[0], 10),
           fighterTwoChance = parseInt(data[1], 10),
@@ -114,17 +116,21 @@ module.exports = class FightCommand extends commando.Command {
         fighterEmbed
           .addField('🇼 Winner', `**${winner}**`, true)
           .addField('🇱 Loser', `**${loser}**`, true)
-          .setFooter(`${winner} bodied ${loser} on ${moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}`);
+          .setFooter(`${winner} bodied ${loser}`)
+          .setTimestamp();
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(fighterEmbed);
       }
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply('an error occurred pitting these combatants against each other 😦');
     });
+    stopTyping(msg);
 
     return null;
   }

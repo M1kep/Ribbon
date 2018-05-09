@@ -34,34 +34,34 @@
  * @returns {MessageEmbed} Information about the current balance of the member
  */
 
-const {MessageEmbed} = require('discord.js'),
-  Database = require('better-sqlite3'),
-  commando = require('discord.js-commando'),
+const Database = require('better-sqlite3'),
   moment = require('moment'),
-  path = require('path'), 
-  {oneLine, stripIndents} = require('common-tags'), 
-  {deleteCommandMessages} = require('../../util.js');
+  path = require('path'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {oneLine, stripIndents} = require('common-tags'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class MemberBalanceCommand extends commando.Command {
+module.exports = class MemberBalanceCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'memberbalance',
-      'memberName': 'memberbalance',
-      'group': 'casino',
-      'aliases': ['mbal', 'mcash', 'mbalance', 'mchips'],
-      'description': 'Retrieves the amount of chips another member has for the casino',
-      'format': 'MemberID|MemberName(partial or full)',
-      'examples': ['memberbalance Sagiri'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'memberbalance',
+      memberName: 'memberbalance',
+      group: 'casino',
+      aliases: ['mbal', 'mcash', 'mbalance', 'mchips'],
+      description: 'Retrieves the amount of chips another member has for the casino',
+      format: 'MemberID|MemberName(partial or full)',
+      examples: ['memberbalance Sagiri'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'player',
-          'prompt': 'Which player should I give them to?',
-          'type': 'member'
+          key: 'player',
+          prompt: 'Which player should I give them to?',
+          type: 'member'
         }
       ]
     });
@@ -72,11 +72,12 @@ module.exports = class MemberBalanceCommand extends commando.Command {
       mbalEmbed = new MessageEmbed();
 
     mbalEmbed
-      .setAuthor(args.player.displayName, args.player.user.displayAvatarURL({'format': 'png'}))
-      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+      .setAuthor(args.player.displayName, args.player.user.displayAvatarURL({format: 'png'}))
+      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
       .setThumbnail('https://favna.xyz/images/ribbonhost/casinologo.png');
 
     try {
+      startTyping(msg);
       const query = conn.prepare(`SELECT * FROM "${msg.guild.id}" WHERE userID = ?;`).get(args.player.id);
 
       if (query) {
@@ -85,20 +86,25 @@ module.exports = class MemberBalanceCommand extends commando.Command {
         ${query.balance}`);
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(mbalEmbed);
       }
+      stopTyping(msg);
 
       return msg.reply(`looks like ${args.player.displayName} doesn\'t have any chips yet. When they run \`${msg.guild.commandPrefix}chips\` they will get their first 500`);
-    } catch (e) {
-      console.error(`	 ${stripIndents`Fatal SQL Error occurred while getting another person's balance (memberbalance)!
-      Server: ${msg.guild.name} (${msg.guild.id})
-      Author: ${msg.author.tag} (${msg.author.id})
-      Time: ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
-      Error Message:`} ${e}`);
+    } catch (err) {
+      stopTyping(msg);
+      this.client.channels.resolve(process.env.ribbonlogchannel).send(stripIndents`
+      <@${this.client.owners[0].id}> Error occurred in \`memberbalance\` command!
+      **Server:** ${msg.guild.name} (${msg.guild.id})
+      **Author:** ${msg.author.tag} (${msg.author.id})
+      **Time:** ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
+      **Error Message:** ${err}
+      `);
 
-      return msg.reply(oneLine`Fatal Error occurred that was logged on Favna\'s system.
-              You can contact him on his server, get an invite by using the \`${msg.guild.commandPrefix}invite\` command `);
+      return msg.reply(oneLine`An error occurred but I notified ${this.client.owners[0].username}
+      Want to know more about the error? Join the support server by getting an invite by using the \`${msg.guild.commandPrefix}invite\` command `);
     }
   }
 };

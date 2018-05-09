@@ -36,37 +36,36 @@
  * @returns {MessageEmbed} A MessageEmbed with a log of the softban
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'), 
-  {oneLine} = require('common-tags'), 
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {oneLine, stripIndents} = require('common-tags'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class SoftbanCommand extends commando.Command {
+module.exports = class SoftbanCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'softban',
-      'memberName': 'softban',
-      'group': 'moderation',
-      'aliases': ['sb', 'sban'],
-      'description': 'Kicks a member while also purging messages from the last 24 hours',
-      'format': 'MemberID|MemberName(partial or full) [ReasonForSoftbanning]',
-      'examples': ['softban JohnDoe annoying'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'softban',
+      memberName: 'softban',
+      group: 'moderation',
+      aliases: ['sb', 'sban'],
+      description: 'Kicks a member while also purging messages from the last 24 hours',
+      format: 'MemberID|MemberName(partial or full) [ReasonForSoftbanning]',
+      examples: ['softban JohnDoe annoying'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'member',
-          'prompt': 'Which member should I softban?',
-          'type': 'member'
+          key: 'member',
+          prompt: 'Which member should I softban?',
+          type: 'member'
         },
         {
-          'key': 'reason',
-          'prompt': 'What is the reason for this softban?',
-          'type': 'string'
+          key: 'reason',
+          prompt: 'What is the reason for this softban?',
+          type: 'string'
         }
       ]
     });
@@ -77,34 +76,40 @@ module.exports = class SoftbanCommand extends commando.Command {
   }
 
   run (msg, args) {
+    startTyping(msg);
     if (args.member.id === msg.author.id) {
+      stopTyping(msg);
+
       return msg.reply('I don\'t think you want to softban yourself.');
     }
 
     if (!args.member.bannable) {
+      stopTyping(msg);
+
       return msg.reply('I cannot softban that member, their role is probably higher than my own!');
     }
 
     args.member.ban({
-      'days': 1,
-      'reason': args.reason
+      days: 1,
+      reason: args.reason
     });
 
     msg.guild.members.unban(args.member.user);
 
-    const embed = new MessageEmbed(),
-      modLogs = this.client.provider.get(msg.guild, 'modlogchannel',
+    const modlogsChannel = this.client.provider.get(msg.guild, 'modlogchannel',
         msg.guild.channels.exists('name', 'mod-logs')
           ? msg.guild.channels.find('name', 'mod-logs').id
-          : null);
+          : null),
+      softbanEmbed = new MessageEmbed();
 
-    embed
+    softbanEmbed
       .setColor('#FF8300')
       .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-      .setDescription(`**Member:** ${args.member.user.tag} (${args.member.id})\n` +
-        '**Action:** Softban\n' +
-        `**Reason:** ${args.reason}`)
-      .setFooter(moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z'));
+      .setDescription(stripIndents`
+      **Member:** ${args.member.user.tag} (${args.member.id})
+      **Action:** Softban
+      **Reason:** ${args.reason}`)
+      .setTimestamp();
 
     if (this.client.provider.get(msg.guild, 'modlogs', true)) {
       if (!this.client.provider.get(msg.guild, 'hasSentModLogMessage', false)) {
@@ -114,12 +119,11 @@ module.exports = class SoftbanCommand extends commando.Command {
         this.client.provider.set(msg.guild, 'hasSentModLogMessage', true);
       }
 
-      deleteCommandMessages(msg, this.client);
-
-      return modLogs !== null ? msg.guild.channels.get(modLogs).send({embed}) : null;
+      modlogsChannel ? msg.guild.channels.get(modlogsChannel).send({softbanEmbed}) : null;
     }
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return null;
+    return msg.embed(softbanEmbed);
   }
 };

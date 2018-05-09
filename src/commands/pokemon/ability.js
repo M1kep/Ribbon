@@ -34,83 +34,78 @@
  * @returns {MessageEmbed} Description and external links for the ability
  */
 
-const Matcher = require('did-you-mean'),
-  commando = require('discord.js-commando'),
+const Fuse = require('fuse.js'),
   path = require('path'),
-  underscore = require('underscore'),
+  {Command} = require('discord.js-commando'),
   {MessageEmbed} = require('discord.js'),
   {BattleAbilities} = require(path.join(__dirname, '../../data/dex/abilities')),
   {AbilityAliases} = require(path.join(__dirname, '../../data/dex/aliases')),
   {oneLine} = require('common-tags'),
-  {capitalizeFirstLetter, deleteCommandMessages} = require('../../util.js');
+  {capitalizeFirstLetter, deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class AbilityCommand extends commando.Command {
+module.exports = class AbilityCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'ability',
-      'memberName': 'ability',
-      'group': 'pokemon',
-      'aliases': ['abilities', 'abi'],
-      'description': 'Get the info on a Pokémon ability',
-      'format': 'AbilityName',
-      'examples': ['ability Multiscale'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'ability',
+      memberName: 'ability',
+      group: 'pokemon',
+      aliases: ['abilities', 'abi'],
+      description: 'Get the info on a Pokémon ability',
+      format: 'AbilityName',
+      examples: ['ability Multiscale'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'ability',
-          'prompt': 'Get info on which ability?',
-          'type': 'string',
-          'parse': p => p.toLowerCase()
+          key: 'ability',
+          prompt: 'Get info on which ability?',
+          type: 'string',
+          parse: p => p.toLowerCase()
         }
       ]
     });
-
-    this.match = [];
   }
 
-  run (msg, args) {
-    const abilityEmbed = new MessageEmbed();
+  run (msg, {ability}) {
+    startTyping(msg);
+    /* eslint-disable sort-vars */
+    const fsoptions = {
+        shouldSort: true,
+        threshold: 0.6,
+        location: 0,
+        distance: 100,
+        maxPatternLength: 32,
+        minMatchCharLength: 1,
+        keys: ['alias', 'ability', 'id', 'name']
+      },
+      aliasFuse = new Fuse(AbilityAliases, fsoptions),
+      abilityFuse = new Fuse(BattleAbilities, fsoptions),
+      aliasSearch = aliasFuse.search(ability),
+      abilitySearch = aliasSearch.length ? abilityFuse.search(aliasSearch[0].ability) : abilityFuse.search(ability),
+      abilityEmbed = new MessageEmbed();
+    /* eslint-enable sort-vars */
 
-    let abilityEntry = {};
-
-    if (AbilityAliases[args.ability]) {
-      args.ability = AbilityAliases[args.ability];
-      this.match = new Matcher(Object.keys(AbilityAliases).join(' '));
-    } else {
-      this.match = new Matcher(Object.keys(BattleAbilities).join(' '));
-    }
-
-    for (const ability in BattleAbilities) {
-      if (BattleAbilities[ability].name.toLowerCase() === args.ability.toLowerCase()) {
-        abilityEntry = BattleAbilities[ability];
-        break;
-      }
-    }
-
-    if (!underscore.isEmpty(abilityEntry)) {
+    if (abilitySearch.length) {
       abilityEmbed
-        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
         .setThumbnail('https://favna.xyz/images/ribbonhost/unovadexclosed.png')
-        .addField('Description', abilityEntry.desc ? abilityEntry.desc : abilityEntry.shortDesc)
+        .addField('Description', abilitySearch[0].desc ? abilitySearch[0].desc : abilitySearch[0].shortDesc)
         .addField('External Resource', oneLine`
-			[Bulbapedia](http://bulbapedia.bulbagarden.net/wiki/${capitalizeFirstLetter(abilityEntry.name.replace(' ', '_'))}_(Ability\\))  
-			|  [Smogon](http://www.smogon.com/dex/sm/abilities/${abilityEntry.name.toLowerCase().replace(' ', '_')})  
-			|  [PokémonDB](http://pokemondb.net/ability/${abilityEntry.name.toLowerCase().replace(' ', '-')})`);
+			[Bulbapedia](http://bulbapedia.bulbagarden.net/wiki/${capitalizeFirstLetter(abilitySearch[0].name.replace(/ /g, '_'))}_(Ability\\))  
+			|  [Smogon](http://www.smogon.com/dex/sm/abilities/${abilitySearch[0].name.toLowerCase().replace(/ /g, '_')})  
+			|  [PokémonDB](http://pokemondb.net/ability/${abilitySearch[0].name.toLowerCase().replace(/ /g, '-')})`);
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
-      return msg.embed(abilityEmbed, `**${capitalizeFirstLetter(abilityEntry.name)}**`);
+      return msg.embed(abilityEmbed, `**${capitalizeFirstLetter(abilitySearch[0].name)}**`);
     }
-    this.match.setThreshold(4);
-    const dym = this.match.get(args.ability), // eslint-disable-line one-var
-      dymString = dym !== null ? `Did you mean \`${dym}\`?` : 'Maybe you misspelt the ability?';
-
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.reply(`ability not found! ${dymString}`);
+    return msg.reply('no ability found. Be sure it is an ability that has an effect in battles!');
   }
 };

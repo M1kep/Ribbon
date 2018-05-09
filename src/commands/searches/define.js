@@ -26,38 +26,39 @@
  * @returns {MessageEmbed} Possible definitions for that word
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  request = require('snekfetch'), 
-  {deleteCommandMessages} = require('../../util.js');
+const request = require('snekfetch'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class DefineCommand extends commando.Command {
+module.exports = class DefineCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'define',
-      'memberName': 'define',
-      'group': 'searches',
-      'aliases': ['def', 'dict'],
-      'description': 'Gets the definition on a word on glosbe',
-      'format': 'Word',
-      'examples': ['define pixel'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'define',
+      memberName: 'define',
+      group: 'searches',
+      aliases: ['def', 'dict'],
+      description: 'Gets the definition on a word on glosbe',
+      format: 'Word',
+      examples: ['define pixel'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'query',
-          'prompt': 'What word do you want to define?',
-          'type': 'string',
-          'parse': p => p.replace(/[^a-zA-Z]/g, '')
+          key: 'query',
+          prompt: 'What word do you want to define?',
+          type: 'string',
+          parse: p => p.replace(/[^a-zA-Z]/g, '')
         }
       ]
     });
   }
 
   async run (msg, args) {
+    startTyping(msg);
     const defineEmbed = new MessageEmbed(),
       word = await request.get('https://glosbe.com/gapi/translate')
         .query('from', 'en')
@@ -80,15 +81,17 @@ module.exports = class DefineCommand extends commando.Command {
         final.push(`**${(parseInt(index, 10) + 1)}:** ${item}`);
       }
       defineEmbed
-        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+        .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
         .setDescription(final);
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.embed(defineEmbed);
     }
 
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(`nothing found for \`${args.query}\`, maybe check your spelling?`);
   }

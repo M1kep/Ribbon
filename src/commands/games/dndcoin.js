@@ -25,45 +25,47 @@
 
 /**
  * @file Games DndCCommand - Flips a coin  
- * **Aliases**: `coinflip`, `dndc`
+ * **Aliases**: `coinflip`, `dndc`, `dcoin`
  * @module
  * @category games
  * @name dndc
  * @returns {MessageEmbed} Side the coin landed on
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'), 
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'), 
+  {MessageEmbed} = require('discord.js'), 
+  {deleteCommandMessages, roundNumber, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class DndCCommand extends commando.Command {
+module.exports = class DndCCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'dndcoin',
-      'memberName': 'dndcoin',
-      'group': 'games',
-      'aliases': ['coinflip', 'dndc'],
-      'description': 'Flips a coin',
-      'examples': ['coin'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'dndcoin',
+      memberName: 'dndcoin',
+      group: 'games',
+      aliases: ['coinflip', 'dndc', 'dcoin'],
+      description: 'Flips a coin',
+      examples: ['coin'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
 
   run (msg) {
+    startTyping(msg);
     const coinEmbed = new MessageEmbed(),
-      flip = Math.round(Number(Math.random()));
+      flip = roundNumber(Math.random());
 
     coinEmbed
-      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
       .setImage(flip === 1 ? 'https://favna.xyz/images/ribbonhost/dndheads.png' : 'https://favna.xyz/images/ribbonhost/dndtails.png')
       .setTitle(`Flipped ${flip === 1 ? 'heads' : 'tails'}`);
 
     deleteCommandMessages(msg, this.client);
-
     msg.embed(coinEmbed);
+
+    return stopTyping(msg);
   }
 };

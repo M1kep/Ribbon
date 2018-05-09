@@ -34,37 +34,38 @@
  * @returns {MessageEmbed} Information about the requested manga
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  maljs = require('maljs'), 
-  {deleteCommandMessages} = require('../../util.js');
+const maljs = require('maljs'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class MangaCommand extends commando.Command {
+module.exports = class MangaCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'manga',
-      'memberName': 'manga',
-      'group': 'searches',
-      'aliases': ['cartoon', 'man'],
-      'description': 'Finds manga on MyAnimeList',
-      'format': 'MangaName',
-      'examples': ['manga Pokemon'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'manga',
+      memberName: 'manga',
+      group: 'searches',
+      aliases: ['cartoon', 'man'],
+      description: 'Finds manga on MyAnimeList',
+      format: 'MangaName',
+      examples: ['manga Pokemon'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'query',
-          'prompt': 'What manga do you want to find?',
-          'type': 'string'
+          key: 'query',
+          prompt: 'What manga do you want to find?',
+          type: 'string'
         }
       ]
     });
   }
 
   async run (msg, args) {
+    startTyping(msg);
     const manEmbed = new MessageEmbed(),
       res = await maljs.quickSearch(args.query, 'manga');
 
@@ -74,7 +75,7 @@ module.exports = class MangaCommand extends commando.Command {
       if (manga) {
 
         manEmbed
-          .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+          .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
           .setTitle(manga.title)
           .setImage(manga.cover)
           .setDescription(manga.description)
@@ -84,16 +85,17 @@ module.exports = class MangaCommand extends commando.Command {
           .addField('Rank', manga.ranked, true);
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(manEmbed, `${manga.mal.url}${manga.path}`);
       }
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply(`no manga found for the input \`${args.query}\` `);
-
-
     }
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(`no manga found for the input \`${args.query}\` `);
   }

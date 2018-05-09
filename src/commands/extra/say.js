@@ -34,29 +34,30 @@
  * @returns {Message} Your message said by the bot
  */
 
-const commando = require('discord.js-commando');
+const {Command} = require('discord.js-commando'), 
+  {stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class SayCommand extends commando.Command {
+module.exports = class SayCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'say',
-      'memberName': 'say',
-      'group': 'extra',
-      'aliases': ['sayd', 'repeat'],
-      'description': 'I will repeat your message',
-      'format': 'MessageToSay',
-      'examples': ['say Favna is a great coder!'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'say',
+      memberName: 'say',
+      group: 'extra',
+      aliases: ['sayd', 'repeat'],
+      description: 'I will repeat your message',
+      format: 'MessageToSay',
+      examples: ['say Favna is a great coder!'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'txt',
-          'prompt': 'What should I say?',
-          'type': 'string',
-          'validate': (rep, msg) => {
+          key: 'txt',
+          prompt: 'What should I say?',
+          type: 'string',
+          validate: (rep, msg) => {
             if (msg.content.toLowerCase().includes('@here') ||
             msg.content.toLowerCase().includes('@everyone') ||
             msg.cleanContent.toLowerCase().includes('@here') ||
@@ -74,20 +75,21 @@ module.exports = class SayCommand extends commando.Command {
   }
 
   run (msg, args) {
+    startTyping(msg);
     const saydata = {
-      'memberHexColor': msg.member.displayHexColor,
-      'commandPrefix': msg.guild.commandPrefix,
-      'authorTag': msg.author.tag,
-      'authorID': msg.author.id,
-      'avatarURL': msg.author.displayAvatarURL({'format': 'png'}),
-      'messageDate': msg.createdAt,
-      'argString': msg.argString.slice(1)
+      memberHexColor: msg.member.displayHexColor,
+      commandPrefix: msg.guild.commandPrefix,
+      authorTag: msg.author.tag,
+      authorID: msg.author.id,
+      avatarURL: msg.author.displayAvatarURL({format: 'png'}),
+      messageDate: msg.createdAt,
+      argString: msg.argString.slice(1)
     };
 
     this.client.provider.set(msg.guild.id, 'saydata', saydata);
-
     msg.delete();
+    msg.say(args.txt);
 
-    return msg.say(args.txt);
+    return stopTyping(msg);
   }
 };

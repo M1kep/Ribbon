@@ -34,30 +34,30 @@
  * @returns {Message} Confirmation the setting was stored
  */
 
-const commando = require('discord.js-commando'),
-  {stripIndents} = require('common-tags'),
-  {deleteCommandMessages, userSearch} = require('../../util.js');
+const {Command} = require('discord.js-commando'), 
+  {stripIndents} = require('common-tags'), 
+  {deleteCommandMessages, stopTyping, startTyping, userSearch} = require('../../util.js');
 
-module.exports = class TwitchMonitorsCommand extends commando.Command {
+module.exports = class TwitchMonitorsCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'twitchmonitors',
-      'memberName': 'twitchmonitors',
-      'group': 'streamwatch',
-      'aliases': ['monitors', 'monitor', 'twitchmonitor'],
-      'description': 'Configures which streamers to spy on',
-      'format': 'Member [Member Member Member]',
-      'examples': ['twitchmonitors Favna Techagent'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'twitchmonitors',
+      memberName: 'twitchmonitors',
+      group: 'streamwatch',
+      aliases: ['monitors', 'monitor', 'twitchmonitor'],
+      description: 'Configures which streamers to spy on',
+      format: 'Member [Member Member Member]',
+      examples: ['twitchmonitors Favna Techagent'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'members',
-          'prompt': 'Which members to monitor?',
-          'type': 'string'
+          key: 'members',
+          prompt: 'Which members to monitor?',
+          type: 'string'
         }
       ]
     });
@@ -68,6 +68,7 @@ module.exports = class TwitchMonitorsCommand extends commando.Command {
   }
 
   async run (msg, args) {
+    startTyping(msg);
     const memberIDs = [],
       memberNames = [];
 
@@ -82,6 +83,7 @@ module.exports = class TwitchMonitorsCommand extends commando.Command {
 
     this.client.provider.set(msg.guild.id, 'twitchmonitors', memberIDs);
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(stripIndents`🕵 Started spying on the stream status of \`${memberNames.join(', ')}\`
         Use \`${msg.guild.commandPrefix}twitchtoggle\` to toggle twitch notifiers on or off

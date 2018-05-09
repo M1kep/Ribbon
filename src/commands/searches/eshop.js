@@ -35,49 +35,50 @@
  */
 
 const Fuse = require('fuse.js'),
-  commando = require('discord.js-commando'),
   fs = require('fs'),
   path = require('path'),
+  {Command} = require('discord.js-commando'),
   {MessageEmbed} = require('discord.js'),
   {oneLine} = require('common-tags'),
-  {deleteCommandMessages} = require('../../util.js');
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class EShopCommand extends commando.Command {
+module.exports = class EShopCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'eshop',
-      'memberName': 'eshop',
-      'group': 'searches',
-      'aliases': ['shop'],
-      'description': 'Gets any game from the Nintendo eShop',
-      'format': 'GameName',
-      'examples': ['eshop Breath of the Wild'],
-      'guildOnly': false,
-      'args': [
+      name: 'eshop',
+      memberName: 'eshop',
+      group: 'searches',
+      aliases: ['shop'],
+      description: 'Gets any game from the Nintendo eShop',
+      format: 'GameName',
+      examples: ['eshop Breath of the Wild'],
+      guildOnly: false,
+      args: [
         {
-          'key': 'game',
-          'prompt': 'What game to find?',
-          'type': 'string'
+          key: 'game',
+          prompt: 'What game to find?',
+          type: 'string'
         }
       ]
     });
   }
 
   run (msg, args) {
-    if (fs.existsSync(path.join(__dirname, '../../data/websearch/eshop.json'))) {
+    startTyping(msg);
+    if (fs.existsSync(path.join(__dirname, '../../data/databases/eshop.json'))) {
 
       /* eslint-disable sort-vars, no-var, vars-on-top, one-var*/
       const embed = new MessageEmbed(),
         fsoptions = {
-          'shouldSort': true,
-          'threshold': 0.6,
-          'location': 0,
-          'distance': 100,
-          'maxPatternLength': 32,
-          'minMatchCharLength': 1,
-          'keys': ['title']
+          shouldSort: true,
+          threshold: 0.6,
+          location: 0,
+          distance: 100,
+          maxPatternLength: 32,
+          minMatchCharLength: 1,
+          keys: ['title']
         },
-        games = JSON.parse(fs.readFileSync(path.join(__dirname, '../../data/websearch/eshop.json'), 'utf8')),
+        games = JSON.parse(fs.readFileSync(path.join(__dirname, '../../data/databases/eshop.json'), 'utf8')),
         fuse = new Fuse(games, fsoptions),
         results = fuse.search(args.game);
       /* eslint-enable sort-vars*/
@@ -98,14 +99,18 @@ module.exports = class EShopCommand extends commando.Command {
           .addField('Categories', typeof results[0].categories.category === 'object' ? results[0].categories.category.join(', ') : results[0].categories.category, true);
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(embed);
       }
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply(`No titles found for \`${args.game}\``);
     }
+    deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(oneLine`eshop data was not found!!
 		Ask <@${this.client.owners[0].id}> to generate it`);

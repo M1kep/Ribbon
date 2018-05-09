@@ -57,7 +57,7 @@ module.exports = {
         "complexity": "error",
         "computed-property-spacing": "error",
         "consistent-return": "error",
-        "consistent-this": "error",
+        "consistent-this": ["error", "self", "that", "me", "bot"],
         "curly": "error",
         "default-case": "error",
         "dot-location": [
@@ -117,9 +117,9 @@ module.exports = {
             "error",
             "always"
         ],
-        "max-depth": "error",
+        "max-depth": "off",
         "max-len": ["error", 200],
-        "max-lines": ["error", 450],
+        "max-lines": "off",
         "max-nested-callbacks": "error",
         "max-params": "off",
         "max-statements": ["error", 35],
@@ -179,16 +179,16 @@ module.exports = {
         "no-negated-condition": "off",
         "no-negated-in-lhs": "error",
         "no-nested-ternary": "error",
-        "no-new": "error",
+        "no-new": "off",
         "no-new-func": "error",
         "no-new-object": "error",
         "no-new-require": "error",
         "no-new-wrappers": "error",
         "no-octal-escape": "error",
-        "no-param-reassign": "error",
+        "no-param-reassign": "off",
         "no-path-concat": "error",
         "no-plusplus": "error",
-        "no-process-env": "error",
+        "no-process-env": "off",
         "no-process-exit": "error",
         "no-proto": "error",
         "no-prototype-builtins": "off",
@@ -243,10 +243,10 @@ module.exports = {
         "padding-line-between-statements": "error",
         "prefer-arrow-callback": "error",
         "prefer-const": "error",
-        "prefer-destructuring": ["off", {
+        "prefer-destructuring": ["error", {
             "VariableDeclarator": {
                 "array": false,
-                "object": false
+                "object": true
             }
         }],
         "prefer-numeric-literals": "error",
@@ -255,7 +255,7 @@ module.exports = {
         "prefer-rest-params": "error",
         "prefer-spread": "error",
         "prefer-template": "error",
-        "quote-props": "error",
+        "quote-props": ["error", "as-needed"],
         "quotes": ["error", "single"],
         "radix": "error",
         "require-await": "error",
@@ -271,7 +271,7 @@ module.exports = {
         "sort-keys": "off",
         "sort-vars": "error",
         "space-before-blocks": "error",
-        "space-before-function-paren": "error",
+        "space-before-function-paren": ["error", "always"],
         "space-in-parens": [
             "error",
             "never"

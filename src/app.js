@@ -24,13 +24,13 @@
  *         reasonable ways as different from the original version.  
  */
 
-/* eslint-disable no-mixed-requires, sort-vars */
+/* eslint-disable no-mixed-requires, sort-vars, one-var */
+const path = require('path');
 
-const path = require('path'),
-  Ribbon = require(path.join(__dirname, 'Ribbon.js')),
-  {token} = require(path.join(__dirname, 'auth.json')),
+require('dotenv').config({path: path.join(__dirname, '.env')});
+const Ribbon = require(path.join(__dirname, 'Ribbon.js')),
   start = function () {
-    new Ribbon(token).init();
+    new Ribbon(process.argv[2] ? process.env.stripetoken : process.env.ribbontoken).init();
   };
 
 start();

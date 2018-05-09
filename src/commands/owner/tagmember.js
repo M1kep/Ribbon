@@ -34,30 +34,35 @@
  * @returns {Message} Mention of the member wrapped between carets
  */
 
-const commando = require('discord.js-commando');
+const {Command} = require('discord.js-commando'), 
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class TagMemberCommand extends commando.Command {
+module.exports = class TagMemberCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'tagmember',
-      'memberName': 'tagmember',
-      'group': 'owner',
-      'description': 'Tag a member',
-      'format': 'MemberID|MemberName(partial or full)',
-      'examples': ['tagmember Favna'],
-      'guildOnly': false,
-      'ownerOnly': true,
-      'args': [
+      name: 'tagmember',
+      memberName: 'tagmember',
+      group: 'owner',
+      description: 'Tag a member',
+      format: 'MemberID|MemberName(partial or full)',
+      examples: ['tagmember Favna'],
+      guildOnly: false,
+      ownerOnly: true,
+      args: [
         {
-          'key': 'member',
-          'prompt': 'What user would you like to snoop on?',
-          'type': 'member'
+          key: 'member',
+          prompt: 'What user would you like to snoop on?',
+          type: 'member'
         }
       ]
     });
   }
 
   run (msg, args) {
+    startTyping(msg);
+    deleteCommandMessages(msg, this.client);
     msg.say(`^^^^ <@${args.member.id}> ^^^^`);
+
+    return stopTyping(msg);
   }
 };

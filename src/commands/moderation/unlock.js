@@ -34,26 +34,33 @@
  * @returns {Message} Confirmation the channel is unlocked
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'), 
-  {oneLine} = require('common-tags'), 
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {oneLine} = require('common-tags'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class UnlockCommand extends commando.Command {
+module.exports = class UnlockCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'unlock',
-      'memberName': 'unlock',
-      'group': 'moderation',
-      'aliases': ['delock', 'ul'],
-      'description': 'Unlocks the current channel',
-      'examples': ['unlock'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
-      }
+      name: 'unlock',
+      memberName: 'unlock',
+      group: 'moderation',
+      aliases: ['delock', 'ul'],
+      description: 'Unlocks the current channel',
+      examples: ['unlock'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
+      },
+      args: [
+        {
+          key: 'lockrole',
+          prompt: 'Which role to apply the lockdown to?',
+          type: 'role',
+          default: 'everyone'
+        }
+      ]
     });
   }
 
@@ -61,20 +68,29 @@ module.exports = class UnlockCommand extends commando.Command {
     return this.client.isOwner(msg.author) || msg.member.hasPermission('ADMINISTRATOR');
   }
 
-  run (msg) {
-    const embed = new MessageEmbed(),
-      modLogs = this.client.provider.get(msg.guild, 'modlogchannel',
+  async run (msg, {lockrole}) {
+    startTyping(msg);
+    const modlogsChannel = this.client.provider.get(msg.guild, 'modlogchannel',
         msg.guild.channels.exists('name', 'mod-logs')
           ? msg.guild.channels.find('name', 'mod-logs').id
           : null),
-      overwrite = msg.channel.overwritePermissions(msg.guild.roles.find('name', '@everyone'), {'SEND_MESSAGES': true}, 'Channel Unlock');
+      overwrite = await msg.channel.overwritePermissions({
+        overwrites: [
+          {
+            id: msg.guild.roles.find('name', lockrole === 'everyone' ? '@everyone' : lockrole.name).id,
+            allowed: ['SEND_MESSAGES']
+          }
+        ],
+        reason: 'Channel Lockdown'
+      }),
+      unlockEmbed = new MessageEmbed();
 
-    embed
+    unlockEmbed
       .setColor('#359876')
       .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
       .setDescription(oneLine`**Action:** 🔓 unlocked the \`${msg.channel.name}\` channel. 
 				This channel can now be used by everyone again. Use \`${msg.guild.commandPrefix}lockdown\` in this channel to (re)-lock it.`)
-      .setFooter(moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z'));
+      .setTimestamp();
 
     if (overwrite) {
       if (this.client.provider.get(msg.guild, 'modlogs', true)) {
@@ -85,14 +101,15 @@ module.exports = class UnlockCommand extends commando.Command {
           this.client.provider.set(msg.guild, 'hasSentModLogMessage', true);
         }
 
-        deleteCommandMessages(msg, this.client);
-
-        modLogs ? msg.guild.channels.get(modLogs).send({embed}) : msg.say(embed);
+        modlogsChannel ? msg.guild.channels.get(modlogsChannel).send('', {embed: unlockEmbed}) : null;
       }
+      deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
-      return msg.say(embed);
+      return msg.embed(unlockEmbed);
     }
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply('an error occurred unlocking this channel');
   }

@@ -27,7 +27,8 @@
  * @file Music SkipSongCommand - Skips the currently playing song and jumps to the next in queue or stops if it is the last song of the queue  
  * A vote to skip is started if there are 4 or more people in the voice channel with `(amount of members) / 3` as required amount of votes (bot doesn't count as a member)  
  * Staff that can delete messages can force the skip by using `skip force`  
- * You need to be in a voice channel before you can use this command
+ * You need to be in a voice channel before you can use this command  
+ * **Aliases**: `next`
  * @module
  * @category music
  * @name skip
@@ -38,42 +39,49 @@
  * @returns {Message} Confirmation the song was skipped
  */
 
-const commando = require('discord.js-commando'),
-  {oneLine} = require('common-tags'),
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'), 
+  {oneLine} = require('common-tags'), 
+  {deleteCommandMessages, roundNumber, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class SkipSongCommand extends commando.Command {
+module.exports = class SkipSongCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'skip',
-      'memberName': 'skip',
-      'group': 'music',
-      'description': 'Skips the song that is currently playing.',
-      'examples': ['skip'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'skip',
+      memberName: 'skip',
+      group: 'music',
+      aliases: ['next'],
+      description: 'Skips the song that is currently playing.',
+      details: 'If there are more than 3 people (not counting the bot) a voteskip is started. Staff can force the skip by adding `force` to the command',
+      examples: ['skip'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
     this.votes = new Map();
   }
 
+  /* eslint-disable max-statements*/
   run (msg, args) {
+    startTyping(msg);
     const queue = this.queue.get(msg.guild.id);
 
     if (!queue) {
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply('there isn\'t a song playing right now, silly.');
     }
     if (!queue.voiceChannel.members.has(msg.author.id)) {
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply('you\'re not in the voice channel. You better not be trying to mess with their mojo, man.');
     }
     if (!queue.songs[0].dispatcher) {
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply('the song hasn\'t even begun playing yet. Why not give it a chance?');
     }
@@ -86,6 +94,7 @@ module.exports = class SkipSongCommand extends commando.Command {
 
     if (force) {
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply(this.skip(msg.guild, queue));
     }
@@ -95,6 +104,7 @@ module.exports = class SkipSongCommand extends commando.Command {
     if (vote && vote.count >= 1) {
       if (vote.users.some(user => user === msg.author.id)) {
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.reply('you\'ve already voted to skip the song.');
       }
@@ -103,6 +113,7 @@ module.exports = class SkipSongCommand extends commando.Command {
       vote.users.push(msg.author.id);
       if (vote.count >= threshold) {
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.reply(this.skip(msg.guild, queue));
       }
@@ -111,6 +122,7 @@ module.exports = class SkipSongCommand extends commando.Command {
         time = this.setTimeout(vote);
 
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.say(oneLine`
 				${vote.count} vote${vote.count > 1 ? 's' : ''} received so far,
@@ -119,12 +131,12 @@ module.exports = class SkipSongCommand extends commando.Command {
 			`);
     }
     const newVote = { // eslint-disable-line one-var            
-        'count': 1,
-        'users': [msg.author.id],
+        count: 1,
+        users: [msg.author.id],
         queue,
-        'guild': msg.guild.id,
-        'start': Date.now(),
-        'timeout': null
+        guild: msg.guild.id,
+        start: Date.now(),
+        timeout: null
       },
       remaining = threshold - 1,
       time = this.setTimeout(newVote);
@@ -132,13 +144,13 @@ module.exports = class SkipSongCommand extends commando.Command {
     this.votes.set(msg.guild.id, newVote);
 
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.say(oneLine`
 				Starting a voteskip.
 				${remaining} more vote${remaining > 1 ? 's are' : ' is'} required for the song to be skipped.
 				The vote will end in ${time} seconds.
 			`);
-
   }
 
   skip (guild, queue) {
@@ -163,7 +175,7 @@ module.exports = class SkipSongCommand extends commando.Command {
       vote.queue.textChannel.send('The vote to skip the current song has ended. Get outta here, party poopers.');
     }, time);
 
-    return Math.round(time / 1000);
+    return roundNumber(time / 1000);
   }
 
   get queue () {

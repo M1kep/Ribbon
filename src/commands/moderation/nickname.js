@@ -35,37 +35,36 @@
  * @returns {Message} Confirmation the nickname was assigned
  */
 
-const {DiscordAPIError} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'), 
-  {deleteCommandMessages} = require('../../util.js'), 
-  {oneLine, stripIndents} = require('common-tags');
+const moment = require('moment'),
+  {Command} = require('discord.js-commando'),
+  {oneLine, stripIndents} = require('common-tags'),  
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class NickCommand extends commando.Command {
+module.exports = class NickCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'nickname',
-      'memberName': 'nickname',
-      'group': 'moderation',
-      'aliases': ['nick'],
-      'description': 'Assigns a nickname to a member. Use "clear" to remove the nickname',
-      'format': 'MemberID|MemberName(partial or full) NewNickname|clear',
-      'examples': ['nick favna pyrrha nikos'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'nickname',
+      memberName: 'nickname',
+      group: 'moderation',
+      aliases: ['nick'],
+      description: 'Assigns a nickname to a member. Use "clear" to remove the nickname',
+      format: 'MemberID|MemberName(partial or full) NewNickname|clear',
+      examples: ['nick favna pyrrha nikos'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'member',
-          'prompt': 'Which member should I assign a nickname to?',
-          'type': 'member'
+          key: 'member',
+          prompt: 'Which member should I assign a nickname to?',
+          type: 'member'
         },
         {
-          'key': 'nickname',
-          'prompt': 'What nickname should I assign?',
-          'type': 'string'
+          key: 'nickname',
+          prompt: 'What nickname should I assign?',
+          type: 'string'
         }
       ]
     });
@@ -75,28 +74,36 @@ module.exports = class NickCommand extends commando.Command {
     return this.client.isOwner(msg.author) || msg.member.hasPermission('MANAGE_NICKNAMES');
   }
 
-  run (msg, args) {
-    if (args.member.manageable) {
+  run (msg, {member, nickname}) {
+    startTyping(msg);
+    if (member.manageable) {
       try {
-        if (args.nickname === 'clear') {
-          args.member.setNickname('');
+        if (nickname === 'clear') {
+          member.setNickname('');
         } else {
-          args.member.setNickname(args.nickname);
+          member.setNickname(nickname);
         }
-      } catch (e) {
-        if (e instanceof DiscordAPIError) {
-          console.error(`	 ${stripIndents`An error occurred on the Nickname command!
-          Server: ${msg.guild.name} (${msg.guild.id})
-          Author: ${msg.author.tag} (${msg.author.id})
-          Time: ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
-          Role: ${args.role.name} (${args.role.id})
-          Error Message:`} ${e}`);
-        } else {
-          console.error('Unknown error occurred in Nickname command');
-        }
+        stopTyping(msg);
+
+        return msg.reply(`${nickname === 'clear' ? `removed <@${member.id}>'s nickname` : `assigned \`${nickname}\` as nickname to <@${member.id}>`}`);
+      } catch (err) {
+        deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
+        this.client.channels.resolve(process.env.ribbonlogchannel).send(stripIndents`
+        <@${this.client.owners[0].id}> Error occurred in \`nickname\` command!
+        **Server:** ${msg.guild.name} (${msg.guild.id})
+        **Author:** ${msg.author.tag} (${msg.author.id})
+        **Time:** ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
+        **Input:** \`${member.user.tag} (${member.id})\` || \`${nickname}\`
+        **Error Message:** ${err}
+        `);
+  
+        return msg.reply(oneLine`An error occurred but I notified ${this.client.owners[0].username}
+        Want to know more about the error? Join the support server by getting an invite by using the \`${msg.guild.commandPrefix}invite\` command `);
       }
     }
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(oneLine`failed to set nickname to that member.
     Check that I have permission to set their nickname as well as the role hierarchy`);

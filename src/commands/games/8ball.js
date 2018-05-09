@@ -34,45 +34,47 @@
  * @returns {MessageEmbed} Your question and its answer
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  predict = require('eightball'), 
-  {deleteCommandMessages} = require('../../util.js');
+const predict = require('eightball'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class EightBallCommand extends commando.Command {
+module.exports = class EightBallCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': '8ball',
-      'memberName': '8ball',
-      'group': 'games',
-      'aliases': ['eightball'],
-      'description': 'Roll a magic 8ball',
-      'format': 'YourQuestion',
-      'examples': ['8ball is Favna a genius coder?'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: '8ball',
+      memberName: '8ball',
+      group: 'games',
+      aliases: ['eightball'],
+      description: 'Roll a magic 8ball',
+      format: 'YourQuestion',
+      examples: ['8ball is Favna a genius coder?'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'question',
-          'prompt': 'For what question should I roll a magic 8ball?',
-          'type': 'string'
+          key: 'question',
+          prompt: 'For what question should I roll a magic 8ball?',
+          type: 'string'
         }
       ]
     });
   }
 
   run (msg, args) {
+    startTyping(msg);
     const eightBallEmbed = new MessageEmbed();
 
     eightBallEmbed
-      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
       .addField(':question: Question', args.question, false)
       .addField(':8ball: 8ball', predict(), false);
 
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.embed(eightBallEmbed);
   }

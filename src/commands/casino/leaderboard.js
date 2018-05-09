@@ -32,26 +32,26 @@
  * @returns {MessageEmbed} List of top ranking players
  */
 
-const {MessageEmbed} = require('discord.js'),
-  Database = require('better-sqlite3'),
-  commando = require('discord.js-commando'),
+const Database = require('better-sqlite3'),
   moment = require('moment'),
-  path = require('path'), 
-  {oneLine, stripIndents} = require('common-tags'), 
-  {deleteCommandMessages} = require('../../util.js');
+  path = require('path'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {oneLine, stripIndents} = require('common-tags'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class LeaderboardCommand extends commando.Command {
+module.exports = class LeaderboardCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'leaderboard',
-      'memberName': 'leaderboard',
-      'group': 'casino',
-      'aliases': ['lb', 'casinolb', 'leaderboards'],
-      'description': 'Shows the top 5 ranking players for your server',
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'leaderboard',
+      memberName: 'leaderboard',
+      group: 'casino',
+      aliases: ['lb', 'casinolb', 'leaderboards'],
+      description: 'Shows the top 5 ranking players for your server',
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
@@ -62,10 +62,11 @@ module.exports = class LeaderboardCommand extends commando.Command {
 
     lbEmbed
       .setTitle('Top 5 players')
-      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
       .setThumbnail('https://favna.xyz/images/ribbonhost/casinologo.png');
 
     try {
+      startTyping(msg);
       const query = conn.prepare(`SELECT * FROM "${msg.guild.id}" ORDER BY balance DESC LIMIT 5;`).all();
 
       if (query) {
@@ -74,20 +75,25 @@ module.exports = class LeaderboardCommand extends commando.Command {
         }
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(lbEmbed);
       }
+      stopTyping(msg);
 
       return msg.reply(`looks like there aren't any people with chips yet on this server. Run \`${msg.guild.commandPrefix}chips\` to get your first 500`);
-    } catch (e) {
-      console.error(`	 ${stripIndents`Fatal SQL Error occurred while retrieving the leaderboard!
-      Server: ${msg.guild.name} (${msg.guild.id})
-      Author: ${msg.author.tag} (${msg.author.id})
-      Time: ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
-      Error Message:`} ${e}`);
+    } catch (err) {
+      stopTyping(msg);
+      this.client.channels.resolve(process.env.ribbonlogchannel).send(stripIndents`
+      <@${this.client.owners[0].id}> Error occurred in \`leaderboard\` command!
+      **Server:** ${msg.guild.name} (${msg.guild.id})
+      **Author:** ${msg.author.tag} (${msg.author.id})
+      **Time:** ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
+      **Error Message:** ${err}
+      `);
 
-      return msg.reply(oneLine`Fatal Error occurred that was logged on Favna\'s system.
-              You can contact him on his server, get an invite by using the \`${msg.guild.commandPrefix}invite\` command `);
+      return msg.reply(oneLine`An error occurred but I notified ${this.client.owners[0].username}
+      Want to know more about the error? Join the support server by getting an invite by using the \`${msg.guild.commandPrefix}invite\` command `);
     }
   }
 };

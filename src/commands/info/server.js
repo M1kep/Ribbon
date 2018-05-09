@@ -32,24 +32,24 @@
  * @returns {MessageEmbed} Info about the server
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'), 
-  {deleteCommandMessages} = require('../../util.js');
+const moment = require('moment'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class ServerInfoCommand extends commando.Command {
+module.exports = class ServerInfoCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'server',
-      'memberName': 'server',
-      'group': 'info',
-      'aliases': ['serverinfo', 'sinfo'],
-      'description': 'Gets information about the server.',
-      'examples': ['server'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'server',
+      memberName: 'server',
+      group: 'info',
+      aliases: ['serverinfo', 'sinfo'],
+      description: 'Gets information about the server.',
+      examples: ['server'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
@@ -85,7 +85,10 @@ module.exports = class ServerInfoCommand extends commando.Command {
   }
 
   run (msg, args) {
+    startTyping(msg);
     if (msg.channel.type !== 'text' && args.server === 'current') {
+      stopTyping(msg);
+
       return msg.reply('an argument of server name (partial or full) or server ID is required when talking outside of a server');
     }
 
@@ -108,9 +111,9 @@ module.exports = class ServerInfoCommand extends commando.Command {
     }
 
     serverEmbed
-      .setColor(msg.guild.owner ? msg.guild.owner.displayHexColor : '#A1E7B2')
+      .setColor(msg.guild.owner ? msg.guild.owner.displayHexColor : '#7CFC00')
       .setAuthor('Server Info', 'https://favna.xyz/images/ribbonhost/discordlogo.png')
-      .setThumbnail(msg.guild.iconURL({'format': 'png'}))
+      .setThumbnail(msg.guild.iconURL({format: 'png'}))
       .setFooter(`Server ID: ${msg.guild.id}`)
       .addField('Server Name', msg.guild.name, true)
       .addField('Owner', msg.guild.owner ? msg.guild.owner.user.tag : 'Owner is MIA', true)
@@ -128,6 +131,7 @@ module.exports = class ServerInfoCommand extends commando.Command {
     msg.guild.splashURL() !== null ? serverEmbed.setImage(msg.guild.splashURL()) : null;
 
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.embed(serverEmbed);
   }

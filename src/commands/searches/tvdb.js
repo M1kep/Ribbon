@@ -34,47 +34,47 @@
  * @returns {MessageEmbed} Information about the requested TV serie
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'),
-  request = require('snekfetch'), 
-  {TheMovieDBV3ApiKey} = require('../../auth.json'), 
-  {deleteCommandMessages} = require('../../util.js');
+const moment = require('moment'),
+  request = require('snekfetch'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, roundNumber, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class TVCommand extends commando.Command {
+module.exports = class TVCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'tvdb',
-      'memberName': 'tvdb',
-      'group': 'searches',
-      'aliases': ['tv'],
-      'description': 'Finds TV shows on TheMovieDB',
-      'format': 'MovieName [release_year_movie]',
-      'examples': ['tvdb Pokemon'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'tvdb',
+      memberName: 'tvdb',
+      group: 'searches',
+      aliases: ['tv'],
+      description: 'Finds TV shows on TheMovieDB',
+      format: 'MovieName [release_year_movie]',
+      examples: ['tvdb Pokemon'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'name',
-          'prompt': 'What TV serie do you want to find?',
-          'type': 'string'
+          key: 'name',
+          prompt: 'What TV serie do you want to find?',
+          type: 'string'
         }
       ]
     });
   }
 
   async run (msg, args) {
+    startTyping(msg);
     const embed = new MessageEmbed(),
       search = await request.get('https://api.themoviedb.org/3/search/tv')
-        .query('api_key', TheMovieDBV3ApiKey)
+        .query('api_key', process.env.moviedbkey)
         .query('query', args.name);
 
     if (search.ok && search.body.total_results) {
       const details = await request.get(`https://api.themoviedb.org/3/tv/${search.body.results[0].id}`)
-        .query('api_key', TheMovieDBV3ApiKey);
+        .query('api_key', process.env.moviedbkey);
 
       if (details.ok) {
         const show = details.body;
@@ -87,23 +87,24 @@ module.exports = class TVCommand extends commando.Command {
           .setThumbnail(`https://image.tmdb.org/t/p/original${show.poster_path}`)
           .setDescription(show.overview)
           .addField('Episode Runtime', `${show.episode_run_time} minutes`, true)
-          .addField('Popularity', `${Math.round(show.popularity * 100) / 100}%`, true)
+          .addField('Popularity', `${roundNumber(show.popularity, 2)}%`, true)
           .addField('Status', show.status, true)
           .addField('First air Date', moment(show.first_air_date).format('MMMM Do YYYY'), true)
           .addField('Genres', show.genres.length ? show.genres.map(genre => genre.name).join(', ') : 'None on TheMovieDB');
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(embed);
       }
-
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
-      return msg.reply(`***Failed to fetch details for \`${args.name}\`***`);
+      return msg.reply(`failed to fetch details for \`${args.name}\``);
     }
-
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.reply(`***No movies found for \`${args.name}\`***`);
+    return msg.reply(`no movies found for \`${args.name}\``);
   }
 };

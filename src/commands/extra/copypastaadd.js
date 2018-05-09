@@ -35,45 +35,46 @@
  * @returns {Message} Confirmation the copypasta was added
  */
 
-const commando = require('discord.js-commando'),
-  fs = require('fs'),
+const fs = require('fs'),
   moment = require('moment'),
   path = require('path'),
-  {deleteCommandMessages} = require('../../util.js');
+  {Command} = require('discord.js-commando'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class CopyPastaAddCommand extends commando.Command {
+module.exports = class CopyPastaAddCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'copypastaadd',
-      'memberName': 'copypastaadd',
-      'group': 'extra',
-      'aliases': ['cpadd', 'pastaadd'],
-      'description': 'Saves a copypasta to local file',
-      'format': 'CopypastaName CopypastaContent',
-      'examples': ['copypasta navy what the fuck did you just say to me ... (etc.)'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'copypastaadd',
+      memberName: 'copypastaadd',
+      group: 'extra',
+      aliases: ['cpadd', 'pastaadd'],
+      description: 'Saves a copypasta to local file',
+      format: 'CopypastaName CopypastaContent',
+      examples: ['copypasta navy what the fuck did you just say to me ... (etc.)'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
 
-      'args': [
+      args: [
         {
-          'key': 'name',
-          'prompt': 'What is the name of the copypasta you want to save?',
-          'type': 'string',
-          'parse': p => p.toLowerCase()
+          key: 'name',
+          prompt: 'What is the name of the copypasta you want to save?',
+          type: 'string',
+          parse: p => p.toLowerCase()
         },
         {
-          'key': 'content',
-          'prompt': 'What should be stored in the copypasta?',
-          'type': 'string'
+          key: 'content',
+          prompt: 'What should be stored in the copypasta?',
+          type: 'string'
         }
       ]
     });
   }
 
   run (msg, args) {
+    startTyping(msg);
     if (!fs.existsSync(path.join(__dirname, `../../data/pastas/${msg.guild.id}`))) {
       console.log(`Creating guild dir for guild ${msg.guild.name}(${msg.guild.id}) at ${moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}`);
       fs.mkdirSync(path.join(__dirname, `../../data/pastas/${msg.guild.id}`));
@@ -83,9 +84,11 @@ module.exports = class CopyPastaAddCommand extends commando.Command {
 
     if (fs.existsSync(path.join(__dirname, `../../data/pastas/${msg.guild.id}/${args.name}.txt`))) {
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply(`Copypasta stored in ${args.name}.txt. You can summon it with ${msg.guild.commandPrefix}copypasta ${args.name}`);
     }
+    stopTyping(msg);
 
     return msg.reply('an error occurred and your pasta was not saved.');
   }

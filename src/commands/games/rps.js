@@ -34,28 +34,32 @@
  * @returns {MessageEmbed} Result of the conflict
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  random = require('node-random'), 
-  {deleteCommandMessages} = require('../../util.js');
+const random = require('node-random'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class RockPaperScissorCommand extends commando.Command {
+module.exports = class RockPaperScissorCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'rps',
-      'memberName': 'rps',
-      'group': 'games',
-      'aliases': ['rockpaperscissors'],
-      'description': 'Play Rock Paper Scissors against random.org randomization',
-      'format': 'HandToPlay',
-      'examples': ['rps Rock'],
-      'guildOnly': false,
-      'args': [
+      name: 'rps',
+      memberName: 'rps',
+      group: 'games',
+      aliases: ['rockpaperscissors'],
+      description: 'Play Rock Paper Scissors against random.org randomization',
+      format: 'HandToPlay',
+      examples: ['rps Rock'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
+      },
+      args: [
         {
-          'key': 'hand',
-          'prompt': 'Do you play rock, paper or scissors?',
-          'type': 'string',
-          'validate': (hand) => {
+          key: 'hand',
+          prompt: 'Do you play rock, paper or scissors?',
+          type: 'string',
+          validate: (hand) => {
             const validHands = ['rock', 'paper', 'scissors'];
 
             if (validHands.includes(hand.toLowerCase())) {
@@ -64,17 +68,18 @@ module.exports = class RockPaperScissorCommand extends commando.Command {
 
             return `Has to be one of ${validHands.join(', ')}`;
           },
-          'parse': p => p.toLowerCase()
+          parse: p => p.toLowerCase()
         }
       ]
     });
   }
 
   run (msg, args) {
+    startTyping(msg);
     random.integers({
-      'number': 1,
-      'minimum': 1,
-      'maximum': 3
+      number: 1,
+      minimum: 1,
+      maximum: 3
     }, (error, randoms) => { // eslint-disable-line complexity
       if (!error) {
         const rpsEmbed = new MessageEmbed();
@@ -102,14 +107,16 @@ module.exports = class RockPaperScissorCommand extends commando.Command {
         }
 
         rpsEmbed
-          .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+          .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
           .setTitle('Rock Paper Scissors')
           .setDescription(resString);
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(rpsEmbed);
       }
+      stopTyping(msg);
 
       return msg.reply('an error occurred getting a random result and I\'m not going to rig this game.');
     });

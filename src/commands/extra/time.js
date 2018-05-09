@@ -35,33 +35,33 @@
  * @returns {MessageEmbed} Current date, current time, country and DST offset
  */
 
-const commando = require('discord.js-commando'),
+const moment = require('moment'),
   request = require('snekfetch'),
+  {Command} = require('discord.js-commando'),
   {MessageEmbed} = require('discord.js'),
   {oneLine, stripIndents} = require('common-tags'),
-  {deleteCommandMessages} = require('../../util.js'),
-  {timezonedbkey, googleapikey} = require('../../auth.json');
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class TimeCommand extends commando.Command {
+module.exports = class TimeCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'time',
-      'memberName': 'time',
-      'group': 'extra',
-      'aliases': ['citytime'],
-      'description': 'Gets the time in any given city',
-      'format': 'CityName',
-      'examples': ['time London'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'time',
+      memberName: 'time',
+      group: 'extra',
+      aliases: ['citytime'],
+      description: 'Gets the time in any given city',
+      format: 'CityName',
+      examples: ['time London'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'city',
-          'prompt': 'Get time in which city?',
-          'type': 'string'
+          key: 'city',
+          prompt: 'Get time in which city?',
+          type: 'string'
         }
       ]
     });
@@ -70,7 +70,7 @@ module.exports = class TimeCommand extends commando.Command {
   async getCords (city) {
     const cords = await request.get('https://maps.googleapis.com/maps/api/geocode/json?')
       .query('address', city)
-      .query('key', googleapikey);
+      .query('key', process.env.googleapikey);
 
     if (cords.ok) {
       return [cords.body.results[0].geometry.location.lat, cords.body.results[0].geometry.location.lng];
@@ -79,12 +79,13 @@ module.exports = class TimeCommand extends commando.Command {
     return null;
   }
 
-  async run (msg, args) {
-    const cords = await this.getCords(args.city);
+  async run (msg, {city}) {
+    startTyping(msg);
+    const cords = await this.getCords(city);
 
     if (cords) {
       const time = await request.get('http://api.timezonedb.com/v2/get-time-zone')
-        .query('key', timezonedbkey)
+        .query('key', process.env.timezonedbkey)
         .query('format', 'json')
         .query('by', 'position')
         .query('lat', cords[0])
@@ -95,26 +96,30 @@ module.exports = class TimeCommand extends commando.Command {
           timeEmbed = new MessageEmbed();
 
         timeEmbed
-          .setTitle(`:flag_${time.body.countryCode.toLowerCase()}: ${args.city}`)
+          .setTitle(`:flag_${time.body.countryCode.toLowerCase()}: ${city}`)
           .setDescription(stripIndents`**Current Time:** ${timeArr[1]}
 					**Current Date:** ${timeArr[0]}
 					**Country:** ${time.body.countryName}
 					**DST:** ${time.body.dst}`)
-          .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2');
+          .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00');
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(timeEmbed);
       }
     }
+    stopTyping(msg);
+    this.client.channels.resolve(process.env.ribbonlogchannel).send(stripIndents`
+    <@${this.client.owners[0].id}> Error occurred in \`time\` command!
+    **Server:** ${msg.guild.name} (${msg.guild.id})
+    **Author:** ${msg.author.tag} (${msg.author.id})
+    **Time:** ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
+    **Input:** ${city}
+    `);
 
-    console.error(stripIndents`Time fetching command failed due to mismatched city
-						City: ${args.city}
-						Server: ${msg.guild.name} (${msg.guild.id})
-						Author: ${msg.author.tag} (${msg.author.id})`);
-
-    return msg.reply(oneLine`Couldn\'t find that city, are you sure you spelled it correctly?
-		A log has been made for Favna so if you want to you can notify him on his server.
-		Use \`${msg.guild ? msg.guild.commandPrefix : this.client.commandPrefix}invite\` to get a link to the support server.`);
+    return msg.reply(oneLine`An error occurred but I notified ${this.client.owners[0].username}
+    Are you sure you spelled the city name correctly?
+    Want to know more about the error? Join the support server by getting an invite by using the \`${msg.guild.commandPrefix}invite\` command `);
   }
 };

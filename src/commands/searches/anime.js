@@ -34,37 +34,38 @@
  * @returns {MessageEmbed} Information about the requested anime
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  maljs = require('maljs'), 
-  {deleteCommandMessages} = require('../../util.js');
+const maljs = require('maljs'),
+  {MessageEmbed} = require('discord.js'),
+  {Command} = require('discord.js-commando'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class AnimeCommand extends commando.Command {
+module.exports = class AnimeCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'anime',
-      'memberName': 'anime',
-      'group': 'searches',
-      'aliases': ['ani', 'mal'],
-      'description': 'Finds anime on MyAnimeList',
-      'format': 'AnimeName',
-      'examples': ['anime Pokemon'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'anime',
+      memberName: 'anime',
+      group: 'searches',
+      aliases: ['ani', 'mal'],
+      description: 'Finds anime on MyAnimeList',
+      format: 'AnimeName',
+      examples: ['anime Pokemon'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'query',
-          'prompt': 'What anime do you want to find?',
-          'type': 'string'
+          key: 'query',
+          prompt: 'What anime do you want to find?',
+          type: 'string'
         }
       ]
     });
   }
 
   async run (msg, args) {
+    startTyping(msg);
     const aniEmbed = new MessageEmbed(),
       res = await maljs.quickSearch(args.query, 'anime');
 
@@ -74,7 +75,7 @@ module.exports = class AnimeCommand extends commando.Command {
       if (anime) {
 
         aniEmbed
-          .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+          .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
           .setTitle(anime.title)
           .setImage(anime.cover)
           .setDescription(anime.description)
@@ -84,14 +85,17 @@ module.exports = class AnimeCommand extends commando.Command {
           .addField('Rank', anime.ranked, true);
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(aniEmbed, `${anime.mal.url}${anime.path}`);
       }
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
       return msg.reply(`no anime found for the input \`${args.query}\` `);
     }
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply(`no anime found for the input \`${args.query}\` `);
   }

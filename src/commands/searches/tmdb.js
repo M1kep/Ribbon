@@ -34,48 +34,48 @@
  * @returns {MessageEmbed} Information about the requested movie
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'),
-  request = require('snekfetch'), 
-  {TheMovieDBV3ApiKey} = require('../../auth.json'), 
-  {deleteCommandMessages} = require('../../util.js');
+const moment = require('moment'),
+  request = require('snekfetch'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class MovieCommand extends commando.Command {
+module.exports = class MovieCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'tmdb',
-      'memberName': 'tmdb',
-      'group': 'searches',
-      'aliases': ['movie'],
-      'description': 'Finds movies on TheMovieDB',
-      'format': 'MovieName [release_year_movie]',
-      'examples': ['tmdb Ocean\'s Eleven 2001'],
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'tmdb',
+      memberName: 'tmdb',
+      group: 'searches',
+      aliases: ['movie'],
+      description: 'Finds movies on TheMovieDB',
+      format: 'MovieName [release_year_movie]',
+      examples: ['tmdb Ocean\'s Eleven 2001'],
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       },
-      'args': [
+      args: [
         {
-          'key': 'name',
-          'prompt': 'What movie do you want to find?',
-          'type': 'string'
+          key: 'name',
+          prompt: 'What movie do you want to find?',
+          type: 'string'
         }
       ]
     });
   }
 
   async run (msg, args) {
+    startTyping(msg);
     const embed = new MessageEmbed(),
       search = await request.get('https://api.themoviedb.org/3/search/movie')
-        .query('api_key', TheMovieDBV3ApiKey)
+        .query('api_key', process.env.moviedbkey)
         .query('query', args.name)
         .query('include_adult', false);
 
     if (search.ok && search.body.total_results > 0) {
       const details = await request.get(`https://api.themoviedb.org/3/movie/${search.body.results[0].id}`)
-        .query('api_key', TheMovieDBV3ApiKey);
+        .query('api_key', process.env.moviedbkey);
 
       if (details.ok) {
         const movie = details.body;
@@ -96,17 +96,18 @@ module.exports = class MovieCommand extends commando.Command {
           .addField('Genres', movie.genres.length ? movie.genres.map(genre => genre.name).join(', ') : 'None on TheMovieDB');
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(embed);
       }
-
       deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
-      return msg.reply(`***Failed to fetch details for \`${args.name}\`***`);
+      return msg.reply(`failed to fetch details for \`${args.name}\``);
     }
-
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
-    return msg.reply(`***No movies found for \`${args.name}\`***`);
+    return msg.reply(`no movies found for \`${args.name}\``);
   }
 };

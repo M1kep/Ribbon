@@ -34,35 +34,35 @@
  * @returns {MessageEmbed} Outcome of the game
  */
 
-const {MessageEmbed} = require('discord.js'),
-  Database = require('better-sqlite3'),
-  commando = require('discord.js-commando'),
+const Database = require('better-sqlite3'),
   moment = require('moment'),
-  path = require('path'), 
-  {oneLine, stripIndents} = require('common-tags'), 
-  {deleteCommandMessages} = require('../../util.js');
+  path = require('path'),
+  {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {oneLine, stripIndents} = require('common-tags'),
+  {deleteCommandMessages, roundNumber, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class WheelOfFortuneCommand extends commando.Command {
+module.exports = class WheelOfFortuneCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'wheeloffortune',
-      'memberName': 'wheeloffortune',
-      'group': 'casino',
-      'aliases': ['wheel', 'wof'],
-      'description': 'Gamble your chips iat the wheel of fortune',
-      'format': 'AmountOfChips',
-      'examples': ['wof 50'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 5
+      name: 'wheeloffortune',
+      memberName: 'wheeloffortune',
+      group: 'casino',
+      aliases: ['wheel', 'wof'],
+      description: 'Gamble your chips iat the wheel of fortune',
+      format: 'AmountOfChips',
+      examples: ['wof 50'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 5
       },
-      'args': [
+      args: [
         {
-          'key': 'chips',
-          'prompt': 'How many chips do you want to gamble?',
-          'type': 'integer',
-          'validate': (chips) => {
+          key: 'chips',
+          prompt: 'How many chips do you want to gamble?',
+          type: 'integer',
+          validate: (chips) => {
             if (/^[+]?\d+$/.test(chips) && chips >= 1 && chips <= 10000) {
               return true;
             }
@@ -82,11 +82,12 @@ module.exports = class WheelOfFortuneCommand extends commando.Command {
       wofEmbed = new MessageEmbed();
 
     wofEmbed
-      .setAuthor(msg.member.displayName, msg.author.displayAvatarURL({'format': 'png'}))
-      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#A1E7B2')
+      .setAuthor(msg.member.displayName, msg.author.displayAvatarURL({format: 'png'}))
+      .setColor(msg.guild ? msg.guild.me.displayHexColor : '#7CFC00')
       .setThumbnail('https://favna.xyz/images/ribbonhost/casinologo.png');
 
     try {
+      startTyping(msg);
       const query = conn.prepare(`SELECT * FROM "${msg.guild.id}" WHERE userID = ?;`).get(msg.author.id);
 
       if (query) {
@@ -98,14 +99,14 @@ module.exports = class WheelOfFortuneCommand extends commando.Command {
 
         query.balance -= args.chips;
         query.balance += args.chips * multipliers[spin];
-        query.balance = Math.round(query.balance);
+        query.balance = roundNumber(query.balance);
 
-        conn.prepare(`UPDATE "${msg.guild.id}" SET balance=$balance WHERE userID="${msg.author.id}";`).run({'balance': query.balance});
+        conn.prepare(`UPDATE "${msg.guild.id}" SET balance=$balance WHERE userID="${msg.author.id}";`).run({balance: query.balance});
 
         wofEmbed
           .setTitle(`${msg.author.tag} ${multipliers[spin] < 1
-            ? `lost ${Math.round(args.chips - (args.chips * multipliers[spin]))}` 
-            : `won ${Math.round((args.chips * multipliers[spin]) - args.chips)}`} chips`)
+            ? `lost ${roundNumber(args.chips - (args.chips * multipliers[spin]))}` 
+            : `won ${roundNumber((args.chips * multipliers[spin]) - args.chips)}`} chips`)
           .addField('Previous Balance', prevBal, true)
           .addField('New Balance', query.balance, true)
           .setDescription(`
@@ -117,20 +118,25 @@ module.exports = class WheelOfFortuneCommand extends commando.Command {
       `);
 
         deleteCommandMessages(msg, this.client);
+        stopTyping(msg);
 
         return msg.embed(wofEmbed);
       }
+      stopTyping(msg);
 
       return msg.reply(`looks like you didn\'t get any chips yet. Run \`${msg.guild.commandPrefix}chips\` to get your first 500`);
-    } catch (e) {
-      console.error(`	 ${stripIndents`Fatal SQL Error occurred for someone spinning the Wheel of Fortune!
-      Server: ${msg.guild.name} (${msg.guild.id})
-      Author: ${msg.author.tag} (${msg.author.id})
-      Time: ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
-      Error Message:`} ${e}`);
+    } catch (err) {
+      stopTyping(msg);
+      this.client.channels.resolve(process.env.ribbonlogchannel).send(stripIndents`
+      <@${this.client.owners[0].id}> Error occurred in \`wheeloffortune\` command!
+      **Server:** ${msg.guild.name} (${msg.guild.id})
+      **Author:** ${msg.author.tag} (${msg.author.id})
+      **Time:** ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
+      **Error Message:** ${err}
+      `);
 
-      return msg.reply(oneLine`Fatal Error occurred that was logged on Favna\'s system.
-              You can contact him on his server, get an invite by using the \`${msg.guild.commandPrefix}invite\` command `);
+      return msg.reply(oneLine`An error occurred but I notified ${this.client.owners[0].username}
+      Want to know more about the error? Join the support server by getting an invite by using the \`${msg.guild.commandPrefix}invite\` command `);
     }
   }
 };

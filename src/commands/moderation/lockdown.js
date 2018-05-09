@@ -34,26 +34,33 @@
  * @returns {Message} Confirmation the channel was locked
  */
 
-const {MessageEmbed} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  moment = require('moment'), 
-  {oneLine} = require('common-tags'), 
-  {deleteCommandMessages} = require('../../util.js');
+const {Command} = require('discord.js-commando'),
+  {MessageEmbed} = require('discord.js'),
+  {oneLine, stripIndents} = require('common-tags'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class LockdownCommand extends commando.Command {
+module.exports = class LockdownCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'lockdown',
-      'memberName': 'lockdown',
-      'group': 'moderation',
-      'aliases': ['lock', 'ld'],
-      'description': 'Locks the current channel to just staff',
-      'examples': ['lockdown'],
-      'guildOnly': true,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
-      }
+      name: 'lockdown',
+      memberName: 'lockdown',
+      group: 'moderation',
+      aliases: ['lock', 'ld'],
+      description: 'Locks the current channel to just staff',
+      examples: ['lockdown'],
+      guildOnly: true,
+      throttling: {
+        usages: 2,
+        duration: 3
+      },
+      args: [
+        {
+          key: 'lockrole',
+          prompt: 'Which role to apply the lockdown to?',
+          type: 'role',
+          default: 'everyone'
+        }
+      ]
     });
   }
 
@@ -61,26 +68,34 @@ module.exports = class LockdownCommand extends commando.Command {
     return this.client.isOwner(msg.author) || msg.member.hasPermission('ADMINISTRATOR');
   }
 
-  /**
-   * @todo Enhance Lockdown
-   * @body Should enhance lockdown to make it configurable on which role the lockdown is applied instead of defaulting to `@everyone`.  
-   * Furthermore make it so if the issues doesn't have admin an overwrite for their highest role is added so they can lift the lockdown
-   */
-
-  run (msg) {
-    const embed = new MessageEmbed(),
-      modLogs = this.client.provider.get(msg.guild, 'modlogchannel',
+  async run (msg, {lockrole}) {
+    startTyping(msg);
+    const lockEmbed = new MessageEmbed(),
+      modlogChannel = this.client.provider.get(msg.guild, 'modlogchannel',
         msg.guild.channels.exists('name', 'mod-logs')
           ? msg.guild.channels.find('name', 'mod-logs').id
           : null),
-      overwrite = msg.channel.overwritePermissions(msg.guild.roles.find('name', '@everyone'), {'SEND_MESSAGES': false}, 'Channel Lockdown');
+      overwrite = await msg.channel.overwritePermissions({
+        overwrites: [
+          {
+            id: msg.member.roles.highest.id,
+            allowed: ['SEND_MESSAGES', 'VIEW_CHANNEL']
+          },
+          {
+            id: msg.guild.roles.find('name', lockrole === 'everyone' ? '@everyone' : lockrole.name).id,
+            denied: ['SEND_MESSAGES']
+          }
+        ],
+        reason: 'Channel Lockdown'
+      });
 
-    embed
+    lockEmbed
       .setColor('#983553')
       .setAuthor(msg.author.tag, msg.author.displayAvatarURL())
-      .setDescription(oneLine`**Action:** 🔒 locked the \`${msg.channel.name}\` channel. 
-				Only staff can now access this channel. Use \`${msg.guild.commandPrefix}unlock\` in this channel to unlock the channel`)
-      .setFooter(moment().format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z'));
+      .setDescription(stripIndents`
+      **Action:** 🔒 locked the \`${msg.channel.name}\` channel.
+      **Details:** Only staff can now access this channel. Use \`${msg.guild.commandPrefix}unlock\` in this channel to unlock the channel`)
+      .setTimestamp();
 
     if (overwrite) {
       if (this.client.provider.get(msg.guild, 'modlogs', true)) {
@@ -90,15 +105,15 @@ module.exports = class LockdownCommand extends commando.Command {
                             This message will only show up this one time and never again after this so if you desire to set up mod logs make sure to do so now.`);
           this.client.provider.set(msg.guild, 'hasSentModLogMessage', true);
         }
-
-        deleteCommandMessages(msg, this.client);
-
-        modLogs ? msg.guild.channels.get(modLogs).send({embed}) : msg.embed(embed);
+        modlogChannel ? msg.guild.channels.get(modlogChannel).send('', {embed: lockEmbed}) : null;
       }
+      deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
 
-      return msg.say(embed.description.slice(12));
+      return msg.embed(lockEmbed);
     }
     deleteCommandMessages(msg, this.client);
+    stopTyping(msg);
 
     return msg.reply('an error occurred locking this channel');
   }

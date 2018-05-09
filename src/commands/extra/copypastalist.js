@@ -32,32 +32,33 @@
  * @returns {MessageEmbed} List of all available copypastas
  */
 
-const {splitMessage} = require('discord.js'),
-  commando = require('discord.js-commando'),
-  fs = require('fs'),
+const fs = require('fs'),
   moment = require('moment'),
-  path = require('path'), 
-  {deleteCommandMessages} = require('../../util.js'), 
-  {stripIndents} = require('common-tags');
+  path = require('path'),
+  {Command} = require('discord.js-commando'),
+  {splitMessage} = require('discord.js'),
+  {stripIndents} = require('common-tags'),
+  {deleteCommandMessages, stopTyping, startTyping} = require('../../util.js');
 
-module.exports = class CopyPastaListCommand extends commando.Command {
+module.exports = class CopyPastaListCommand extends Command {
   constructor (client) {
     super(client, {
-      'name': 'copypastalist',
-      'memberName': 'copypastalist',
-      'group': 'extra',
-      'aliases': ['cplist', 'copylist', 'pastalist'],
-      'description': 'Gets all copypastas available to the server',
-      'guildOnly': false,
-      'throttling': {
-        'usages': 2,
-        'duration': 3
+      name: 'copypastalist',
+      memberName: 'copypastalist',
+      group: 'extra',
+      aliases: ['cplist', 'copylist', 'pastalist'],
+      description: 'Gets all copypastas available to the server',
+      guildOnly: false,
+      throttling: {
+        usages: 2,
+        duration: 3
       }
     });
   }
 
   async run (msg) {
     try {
+      startTyping(msg);
       const list = fs.readdirSync(path.join(__dirname, `../../data/pastas/${msg.guild.id}`));
 
       if (list && list.length) {
@@ -74,31 +75,36 @@ module.exports = class CopyPastaListCommand extends commando.Command {
 
         for (const part in splitTotal) {
           messages.push(await msg.embed({
-            'title': 'Copypastas available on this server',
-            'description': splitTotal[part],
-            'color': msg.guild.me.displayColor
+            title: 'Copypastas available on this server',
+            description: splitTotal[part],
+            color: msg.guild.me.displayColor
           }));
         }
+        stopTyping(msg);
 
         return messages;
       }
 
+      stopTyping(msg);
+
       return msg.embed({
-        'title': 'Copypastas available on this server',
-        'description': list.join('\n'),
-        'color': msg.guild.me.displayColor
+        title: 'Copypastas available on this server',
+        description: list.join('\n'),
+        color: msg.guild.me.displayColor
       });
 
     } catch (err) {
-      console.error(`	 ${stripIndents`An error occurred on the CopypastaList command!
-			Server: ${msg.guild.name} (${msg.guild.id})
-			Author: ${msg.author.tag} (${msg.author.id})
-			Time: ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
-			Error Message:`} ${err}`);
+      deleteCommandMessages(msg, this.client);
+      stopTyping(msg);
+      this.client.channels.resolve(process.env.ribbonlogchannel).send(stripIndents`
+      <@${this.client.owners[0].id}> Error occurred in \`copypastalist\` command!
+      **Server:** ${msg.guild.name} (${msg.guild.id})
+      **Author:** ${msg.author.tag} (${msg.author.id})
+      **Time:** ${moment(msg.createdTimestamp).format('MMMM Do YYYY [at] HH:mm:ss [UTC]Z')}
+      **Error Message:** ${err}
+      `);
+
+      return msg.reply(`no copypastas found for this server. Start saving your first with \`${msg.guild.commandPrefix}copypastaadd\`!`);
     }
-
-    deleteCommandMessages(msg, this.client);
-
-    return msg.reply(`no copypastas found for this server. Start saving your first with \`${msg.guild.commandPrefix}copypastaadd\`!`);
   }
 };

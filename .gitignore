@@ -1,15 +1,23 @@
 # Node modules need to be installed through yarn
 node_modules/
 
-# Key files
-src/*.json
+# Environment variables
+.env
 
 # Any logs created
 *.log
 
-# Files that shouldn't sync between my PC and RaspberryPi
+# Data folders
 src/data/databases/*
-src/data/websearch/eshop.json
+src/data/pastas/*
 
-# Keep gitkeep
+# Folder keep
 !**/*.gitkeep
+!src/data/pastas/*.gitkeep
+
+# VSCode settings
+.vscode/
+
+# Code coverage results
+coverage/
+.nyc_output/
